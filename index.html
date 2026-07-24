@@ -282,16 +282,44 @@ function renderMarket() {
     </div>`;
   }
 
-  // Market sector ranking
+  // Industry sector ranking table
   const ms = m.market_sectors;
   if (ms && ms.length > 0) {
-    h += '<div class="section-title">行业板块涨跌</div>';
-    h += '<div class="chips">';
-    for (const s of ms.slice(0, 12)) {
-      const cls = s.pct > 0 ? 'chip' : 'chip';
-      h += `<span class="chip" style="color:${s.pct>0?'var(--red)':'var(--green)'}">${s.name} ${s.pct>0?'+':''}${s.pct.toFixed(1)}%</span>`;
-    }
-    h += '</div>';
+    h += '<div class="section-title">行业板块</div>';
+    h += '<div style="overflow-x:auto"><table><thead><tr>';
+    h += '<th>排名</th><th>板块</th><th>涨幅</th><th>主力净流入(亿)</th>';
+    h += '</tr></thead><tbody>';
+    ms.forEach((s, i) => {
+      const pctCls = s.pct > 0 ? 'badge-up' : s.pct < 0 ? 'badge-down' : '';
+      const flowCls = s.flow > 0 ? 'badge-up' : s.flow < 0 ? 'badge-down' : '';
+      h += `<tr>
+        <td style="color:var(--text-dim)">${i+1}</td>
+        <td>${s.name}</td>
+        <td class="${pctCls}">${s.pct>0?'+':''}${s.pct.toFixed(2)}%</td>
+        <td class="${flowCls}">${s.flow>0?'+':''}${s.flow.toFixed(1)}</td>
+      </tr>`;
+    });
+    h += '</tbody></table></div>';
+  }
+
+  // Concept sector ranking table
+  const mc = m.market_concepts;
+  if (mc && mc.length > 0) {
+    h += '<div class="section-title">概念板块</div>';
+    h += '<div style="overflow-x:auto"><table><thead><tr>';
+    h += '<th>排名</th><th>概念</th><th>涨幅</th><th>主力净流入(亿)</th>';
+    h += '</tr></thead><tbody>';
+    mc.forEach((s, i) => {
+      const pctCls = s.pct > 0 ? 'badge-up' : s.pct < 0 ? 'badge-down' : '';
+      const flowCls = s.flow > 0 ? 'badge-up' : s.flow < 0 ? 'badge-down' : '';
+      h += `<tr>
+        <td style="color:var(--text-dim)">${i+1}</td>
+        <td>${s.name}</td>
+        <td class="${pctCls}">${s.pct>0?'+':''}${s.pct.toFixed(2)}%</td>
+        <td class="${flowCls}">${s.flow>0?'+':''}${s.flow.toFixed(1)}</td>
+      </tr>`;
+    });
+    h += '</tbody></table></div>';
   }
 
   h += '</div>';

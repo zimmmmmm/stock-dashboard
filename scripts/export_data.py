@@ -96,10 +96,10 @@ def fetch_market_breadth():
 
 
 def fetch_sector_ranking():
-    """拉行业板块涨跌排名"""
+    """拉行业板块涨跌排名 + 资金流向"""
     url = ("https://push2.eastmoney.com/api/qt/clist/get?"
-           "fid=f3&po=1&pz=12&pn=1&np=1&fltt=2&invt=2"
-           "&fields=f2,f3,f12,f14"
+           "fid=f3&po=1&pz=20&pn=1&np=1&fltt=2&invt=2"
+           "&fields=f2,f3,f12,f14,f62,f184,f66"
            "&fs=m:90+t:2+f:!50")
     try:
         r = subprocess.run(['curl', '-s', '--connect-timeout', '5', '--max-time', '10', url],
@@ -108,13 +108,43 @@ def fetch_sector_ranking():
         sectors = []
         if data.get('data') and data['data'].get('diff'):
             for item in data['data']['diff']:
-                pct = item.get('f3', 0)
+                pct = item.get('f3', 0) or 0
+                flow = item.get('f62', 0) or 0  # 主力净流入(元)
+                flow_amount = round(flow / 1e8, 2)  # 转亿
                 sectors.append({
                     'code': item.get('f12', ''),
                     'name': item.get('f14', ''),
                     'pct': pct,
+                    'flow': flow_amount,  # 主力净流入(亿)
                 })
         return sectors
+    except Exception:
+        return []
+
+
+def fetch_concept_ranking():
+    """拉概念板块涨跌排名 + 资金流向"""
+    url = ("https://push2.eastmoney.com/api/qt/clist/get?"
+           "fid=f3&po=1&pz=20&pn=1&np=1&fltt=2&invt=2"
+           "&fields=f2,f3,f12,f14,f62"
+           "&fs=m:90+t:3+f:!50")
+    try:
+        r = subprocess.run(['curl', '-s', '--connect-timeout', '5', '--max-time', '10', url],
+                         capture_output=True, timeout=12)
+        data = json.loads(r.stdout.decode('utf-8'))
+        concepts = []
+        if data.get('data') and data['data'].get('diff'):
+            for item in data['data']['diff']:
+                pct = item.get('f3', 0) or 0
+                flow = item.get('f62', 0) or 0
+                flow_amount = round(flow / 1e8, 2)
+                concepts.append({
+                    'code': item.get('f12', ''),
+                    'name': item.get('f14', ''),
+                    'pct': pct,
+                    'flow': flow_amount,
+                })
+        return concepts
     except Exception:
         return []
 
@@ -242,6 +272,7 @@ def export_market():
     # 拉全市场数据
     breadth = fetch_market_breadth()
     sectors = fetch_sector_ranking()
+    concepts = fetch_concept_ranking()
 
     data = {
         'updated': datetime.now().isoformat(),
@@ -250,6 +281,7 @@ def export_market():
         # 全市场数据
         'market_breadth': breadth,
         'market_sectors': sectors,
+        'market_concepts': concepts,
         # 自选池汇总
         'watchlist_summary': {
             'total': len(watchlist), 'ups': ups, 'downs': downs,
