@@ -150,20 +150,31 @@ class DashboardServer(http.server.SimpleHTTPRequestHandler):
                 headers['anthropic-version'] = '2023-06-01'
 
             api_req = urllib.request.Request(base_url, data=req_body, headers=headers)
-            with urllib.request.urlopen(api_req, timeout=60) as resp:
-                data = json.loads(resp.read())
-                # 兼容 Anthropic 和 DeepSeek 两种响应格式
+            with urllib.request.urlopen(api_req, timeout=120) as resp:
+                raw = resp.read()
+                data = json.loads(raw)
+
+                # 多格式兼容提取文本
                 text = ''
-                if 'content' in data:
-                    if isinstance(data['content'], list) and len(data['content']) > 0:
-                        text = data['content'][0].get('text', '')
-                    elif isinstance(data['content'], str):
-                        text = data['content']
-                elif 'choices' in data:
-                    text = data['choices'][0].get('message', {}).get('content', '')
-                elif 'message' in data:
-                    text = data['message'].get('content', '') if isinstance(data['message'], dict) else str(data['message'])
-                else:
+                # Anthropic: {"content":[{"type":"text","text":"..."}]}
+                if isinstance(data.get('content'), list):
+                    for block in data['content']:
+                        if isinstance(block, dict) and block.get('text'):
+                            text += block['text']
+                        elif isinstance(block, str):
+                            text += block
+                # OpenAI/DeepSeek: {"choices":[{"message":{"content":"..."}}]}
+                elif isinstance(data.get('choices'), list):
+                    for c in data['choices']:
+                        msg = c.get('message', {}) if isinstance(c, dict) else {}
+                        text += msg.get('content', '') if isinstance(msg, dict) else str(msg)
+                # Simple: {"message":"..."} or {"response":"..."}
+                elif isinstance(data.get('message'), dict):
+                    text = data['message'].get('content', '')
+                elif data.get('response'):
+                    text = str(data['response'])
+                # Last resort: dump whole response
+                if not text:
                     text = json.dumps(data, ensure_ascii=False)
                 return self.json_resp({'ok': True, 'text': text})
 
