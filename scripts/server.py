@@ -130,8 +130,9 @@ class DashboardServer(http.server.SimpleHTTPRequestHandler):
                 "回答简洁直接，数据说话，给出具体标的和代码。"
             )
 
+            model = body.get('model', 'claude-3-haiku-20240307')
             req_body = json.dumps({
-                'model': 'claude-sonnet-5-20251001',
+                'model': model,
                 'max_tokens': 4096,
                 'system': system_prompt,
                 'messages': [{'role': 'user', 'content': prompt}],

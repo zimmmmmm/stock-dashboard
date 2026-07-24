@@ -261,9 +261,14 @@ function renderClaude() {
   h += '<div style="display:flex;flex-direction:column">';
   h += '<div style="font-size:14px;font-weight:bold;margin-bottom:8px">💬 对话</div>';
 
-  // API Key (session only)
-  h += '<div style="margin-bottom:8px">';
-  h += '<input type="password" id="apiKey" placeholder="输入 Anthropic API Key (本次会话有效)" style="font-size:12px" onchange="saveApiKey()">';
+  // API Key + Model (session only)
+  h += '<div style="margin-bottom:8px;display:flex;gap:6px">';
+  h += '<input type="password" id="apiKey" placeholder="Anthropic API Key" style="flex:1;font-size:12px" onchange="saveApiKey()">';
+  h += '<select id="apiModel" style="width:100px;font-size:11px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px" onchange="saveApiKey()">';
+  h += '<option value="claude-3-haiku-20240307">Haiku</option>';
+  h += '<option value="claude-3-5-sonnet-20241022">Sonnet</option>';
+  h += '<option value="claude-3-opus-20240229">Opus</option>';
+  h += '</select>';
   h += '</div>';
 
   // Quick prompts
@@ -338,7 +343,7 @@ async function sendChat() {
     const r = await fetch(baseUrl + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key, prompt }),
+      body: JSON.stringify({ key, prompt, model: document.getElementById('apiModel')?.value || 'claude-3-haiku-20240307' }),
     });
     const data = await r.json();
     if (data.ok) {
