@@ -39,6 +39,9 @@ class DashboardServer(http.server.SimpleHTTPRequestHandler):
         if self.path == '/api/status':
             return self.get_status()
 
+        if self.path.startswith('/api/search'):
+            return self.search_stock()
+
         if self.path == '/api/watchlist':
             return self.get_watchlist()
 
@@ -107,6 +110,36 @@ class DashboardServer(http.server.SimpleHTTPRequestHandler):
             return self.save_watchlist()
         self.send_response(404)
         self.end_headers()
+
+    def search_stock(self):
+        """搜索股票，支持代码或名称"""
+        from urllib.parse import urlparse, parse_qs
+        qs = parse_qs(urlparse(self.path).query)
+        keyword = qs.get('q', [''])[0]
+        if not keyword:
+            return self.json_resp([])
+
+        # 东方财富搜索API
+        url = (f"https://searchadapter.eastmoney.com/api/suggest/get?"
+               f"input={keyword}&type=14&token=D43BF722C8E33BDC906FB84D85E326E8&count=10")
+        try:
+            r = subprocess.run(['curl', '-s', '--connect-timeout', '5', '--max-time', '10', url],
+                             capture_output=True, timeout=12)
+            data = json.loads(r.stdout.decode('utf-8'))
+            results = []
+            if data.get('QuotationCodeTable') and data['QuotationCodeTable'].get('Data'):
+                for item in data['QuotationCodeTable']['Data']:
+                    code = item.get('Code', '')
+                    name = item.get('Name', '')
+                    mkt = item.get('MktNum', '')
+                    # 只保留A股主板（沪市1, 深市0）
+                    if code and name and mkt in ('0', '1'):
+                        # 过滤掉300/688开头的创业板科创板
+                        if not code.startswith('300') and not code.startswith('688'):
+                            results.append({'code': code, 'name': name, 'market': '沪' if mkt=='1' else '深'})
+            return self.json_resp(results[:8])
+        except Exception:
+            return self.json_resp([])
 
     def get_watchlist(self):
         wl_path = DATA / 'watchlist.json'

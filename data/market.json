@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-24T11:49:09.364195",
+  "updated": "2026-07-24T11:52:37.888745",
   "indices": [
     {
       "code": "000001",
@@ -32,18 +32,18 @@
   ],
   "watchlist": [
     {
-      "code": "001258",
-      "name": "立新能源",
-      "price": 13.32,
-      "prev_close": 12.11,
-      "pct": 9.99,
-      "turnover": 11.65,
-      "amount": 14.3,
-      "open": 12.99,
-      "high": 13.32,
-      "low": 12.74,
-      "status": "涨停",
-      "sector": "电力"
+      "code": "600584",
+      "name": "长电科技",
+      "price": 81.73,
+      "prev_close": 80.81,
+      "pct": 1.14,
+      "turnover": 5.46,
+      "amount": 79.8,
+      "open": 78.02,
+      "high": 84.04,
+      "low": 78.02,
+      "status": "飘红",
+      "sector": "半导体"
     },
     {
       "code": "600744",
@@ -57,6 +57,76 @@
       "high": 8.15,
       "low": 7.28,
       "status": "飘红",
+      "sector": "电力"
+    },
+    {
+      "code": "603118",
+      "name": "共进股份",
+      "price": 16.16,
+      "prev_close": 16.6,
+      "pct": -2.65,
+      "turnover": 16.43,
+      "amount": 21.5,
+      "open": 15.75,
+      "high": 17.88,
+      "low": 15.75,
+      "status": "弱势",
+      "sector": "交换机/AI"
+    },
+    {
+      "code": "603893",
+      "name": "瑞芯微",
+      "price": 224.82,
+      "prev_close": 214.0,
+      "pct": 5.06,
+      "turnover": 5.86,
+      "amount": 55.0,
+      "open": 207.52,
+      "high": 231.0,
+      "low": 207.52,
+      "status": "强势",
+      "sector": "半导体"
+    },
+    {
+      "code": "603986",
+      "name": "兆易创新",
+      "price": 447.0,
+      "prev_close": 451.96,
+      "pct": -1.1,
+      "turnover": 3.78,
+      "amount": 113.1,
+      "open": 444.0,
+      "high": 458.99,
+      "low": 438.5,
+      "status": "弱势",
+      "sector": "半导体"
+    },
+    {
+      "code": "605111",
+      "name": "新洁能",
+      "price": 55.32,
+      "prev_close": 55.6,
+      "pct": -0.5,
+      "turnover": 2.85,
+      "amount": 6.6,
+      "open": 55.0,
+      "high": 56.6,
+      "low": 54.01,
+      "status": "弱势",
+      "sector": "半导体"
+    },
+    {
+      "code": "001258",
+      "name": "立新能源",
+      "price": 13.32,
+      "prev_close": 12.11,
+      "pct": 9.99,
+      "turnover": 11.65,
+      "amount": 14.3,
+      "open": 12.99,
+      "high": 13.32,
+      "low": 12.74,
+      "status": "涨停",
       "sector": "电力"
     },
     {
@@ -88,34 +158,6 @@
       "sector": "半导体"
     },
     {
-      "code": "603986",
-      "name": "兆易创新",
-      "price": 447.0,
-      "prev_close": 451.96,
-      "pct": -1.1,
-      "turnover": 3.78,
-      "amount": 113.1,
-      "open": 444.0,
-      "high": 458.99,
-      "low": 438.5,
-      "status": "弱势",
-      "sector": "半导体"
-    },
-    {
-      "code": "600584",
-      "name": "长电科技",
-      "price": 81.73,
-      "prev_close": 80.81,
-      "pct": 1.14,
-      "turnover": 5.46,
-      "amount": 79.8,
-      "open": 78.02,
-      "high": 84.04,
-      "low": 78.02,
-      "status": "飘红",
-      "sector": "半导体"
-    },
-    {
       "code": "002156",
       "name": "通富微电",
       "price": 74.35,
@@ -126,20 +168,6 @@
       "open": 68.03,
       "high": 76.8,
       "low": 68.03,
-      "status": "强势",
-      "sector": "半导体"
-    },
-    {
-      "code": "603893",
-      "name": "瑞芯微",
-      "price": 224.82,
-      "prev_close": 214.0,
-      "pct": 5.06,
-      "turnover": 5.86,
-      "amount": 55.0,
-      "open": 207.52,
-      "high": 231.0,
-      "low": 207.52,
       "status": "强势",
       "sector": "半导体"
     },
@@ -186,34 +214,6 @@
       "sector": "交换机/AI"
     },
     {
-      "code": "603118",
-      "name": "共进股份",
-      "price": 16.16,
-      "prev_close": 16.6,
-      "pct": -2.65,
-      "turnover": 16.43,
-      "amount": 21.5,
-      "open": 15.75,
-      "high": 17.88,
-      "low": 15.75,
-      "status": "弱势",
-      "sector": "交换机/AI"
-    },
-    {
-      "code": "000063",
-      "name": "中兴通讯",
-      "price": 34.99,
-      "prev_close": 35.92,
-      "pct": -2.59,
-      "turnover": 3.13,
-      "amount": 44.4,
-      "open": 35.01,
-      "high": 35.82,
-      "low": 34.8,
-      "status": "弱势",
-      "sector": "交换机/AI"
-    },
-    {
       "code": "002900",
       "name": "哈三联",
       "price": 11.81,
@@ -225,20 +225,6 @@
       "high": 12.3,
       "low": 11.22,
       "status": "弱势",
-      "sector": "医药"
-    },
-    {
-      "code": "002793",
-      "name": "罗欣药业",
-      "price": 4.8,
-      "prev_close": 5.07,
-      "pct": -5.33,
-      "turnover": 5.14,
-      "amount": 2.7,
-      "open": 4.92,
-      "high": 5.05,
-      "low": 4.78,
-      "status": "下跌",
       "sector": "医药"
     },
     {
@@ -282,76 +268,6 @@
       "low": 67.51,
       "status": "下跌",
       "sector": "医药"
-    },
-    {
-      "code": "002213",
-      "name": "大为股份",
-      "price": 27.08,
-      "prev_close": 27.89,
-      "pct": -2.9,
-      "turnover": 5.68,
-      "amount": 3.2,
-      "open": 27.16,
-      "high": 27.98,
-      "low": 26.82,
-      "status": "弱势",
-      "sector": "半导体"
-    },
-    {
-      "code": "603297",
-      "name": "永新光学",
-      "price": 90.09,
-      "prev_close": 91.45,
-      "pct": -1.49,
-      "turnover": 0.41,
-      "amount": 0.4,
-      "open": 91.0,
-      "high": 92.1,
-      "low": 89.26,
-      "status": "弱势",
-      "sector": "光学"
-    },
-    {
-      "code": "605111",
-      "name": "新洁能",
-      "price": 55.32,
-      "prev_close": 55.6,
-      "pct": -0.5,
-      "turnover": 2.85,
-      "amount": 6.6,
-      "open": 55.0,
-      "high": 56.6,
-      "low": 54.01,
-      "status": "弱势",
-      "sector": "半导体"
-    },
-    {
-      "code": "600406",
-      "name": "国电南瑞",
-      "price": 23.86,
-      "prev_close": 24.37,
-      "pct": -2.09,
-      "turnover": 0.66,
-      "amount": 12.7,
-      "open": 24.19,
-      "high": 24.37,
-      "low": 23.78,
-      "status": "弱势",
-      "sector": "电力"
-    },
-    {
-      "code": "600875",
-      "name": "东方电气",
-      "price": 25.78,
-      "prev_close": 27.22,
-      "pct": -5.29,
-      "turnover": 1.64,
-      "amount": 9.7,
-      "open": 26.65,
-      "high": 26.7,
-      "low": 25.61,
-      "status": "下跌",
-      "sector": "电力"
     }
   ],
   "market_breadth": {
@@ -362,39 +278,34 @@
   },
   "market_sectors": [],
   "watchlist_summary": {
-    "total": 23,
+    "total": 17,
     "ups": 7,
-    "downs": 16,
+    "downs": 10,
     "flat": 0,
     "limit_ups": 1,
     "sectors": {
-      "电力": {
-        "count": 5,
-        "ups": 2,
-        "limit_ups": 1
-      },
       "半导体": {
-        "count": 8,
+        "count": 7,
         "ups": 5,
         "limit_ups": 0
       },
+      "电力": {
+        "count": 3,
+        "ups": 2,
+        "limit_ups": 1
+      },
       "交换机/AI": {
-        "count": 4,
+        "count": 3,
         "ups": 0,
         "limit_ups": 0
       },
       "医药": {
-        "count": 3,
+        "count": 2,
         "ups": 0,
         "limit_ups": 0
       },
       "算力": {
         "count": 2,
-        "ups": 0,
-        "limit_ups": 0
-      },
-      "光学": {
-        "count": 1,
         "ups": 0,
         "limit_ups": 0
       }

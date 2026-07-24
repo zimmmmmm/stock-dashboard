@@ -392,13 +392,42 @@ async function loadWatchlistConfig() {
   } catch(e) {}
 }
 
-function showAddStock() {
+async function showAddStock() {
   if (!SERVER && !watchlistConfig) { toast('请先启动服务', true); return; }
-  if (!watchlistConfig) { loadWatchlistConfig(); return; }
-  const code = prompt('输入股票代码（6位）:');
-  if (!code || code.length !== 6) return;
-  const name = prompt('输入股票名称:');
-  if (!name) return;
+  if (!watchlistConfig) { await loadWatchlistConfig(); if (!watchlistConfig) return; }
+
+  const input = prompt('输入股票代码或名称（6位代码直接添加，名称会搜索匹配）:');
+  if (!input) return;
+
+  let code, name;
+
+  if (/^\d{6}$/.test(input)) {
+    // 6位数字 = 直接当代码
+    code = input;
+    name = prompt('输入股票名称:') || '';
+  } else {
+    // 名称 = 搜索
+    try {
+      const r = await fetch(SERVER + '/api/search?q=' + encodeURIComponent(input));
+      const results = await r.json();
+      if (!results || results.length === 0) {
+        toast('未找到匹配股票', true); return;
+      }
+      if (results.length === 1) {
+        code = results[0].code; name = results[0].name;
+      } else {
+        // 多个结果，让用户选
+        let list = '找到以下股票:\n';
+        results.forEach((s, i) => { list += `${i+1}. ${s.code} ${s.name}(${s.market})\n`; });
+        list += '\n输入序号选择:';
+        const idx = parseInt(prompt(list)) - 1;
+        if (isNaN(idx) || idx < 0 || idx >= results.length) return;
+        code = results[idx].code; name = results[idx].name;
+      }
+    } catch(e) { toast('搜索失败: ' + e.message, true); return; }
+  }
+  if (!code || !name) return;
+
   const sector = prompt('输入板块（电力/半导体/算力/交换机/AI/医药/光学/其他）:', '其他');
   watchlistConfig.stocks[code] = name;
   watchlistConfig.sectors[code] = sector || '其他';
