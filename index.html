@@ -188,6 +188,8 @@ async function init() {
   await loadAllData();
   renderAll();
   detectLive();
+  // 延迟加载自选配置（等SERVER检测完）
+  setTimeout(async () => { if (SERVER) await loadWatchlistConfig(); }, 1500);
 }
 
 async function loadAllData() {
@@ -391,21 +393,22 @@ async function loadWatchlistConfig() {
 }
 
 function showAddStock() {
+  if (!SERVER && !watchlistConfig) { toast('请先启动服务', true); return; }
+  if (!watchlistConfig) { loadWatchlistConfig(); return; }
   const code = prompt('输入股票代码（6位）:');
   if (!code || code.length !== 6) return;
   const name = prompt('输入股票名称:');
   if (!name) return;
-  const sector = prompt('输入板块（电力/半导体/算力/医药/其他）:', '其他');
-  if (!watchlistConfig) watchlistConfig = { stocks: {}, sectors: {} };
+  const sector = prompt('输入板块（电力/半导体/算力/交换机/AI/医药/光学/其他）:', '其他');
   watchlistConfig.stocks[code] = name;
   watchlistConfig.sectors[code] = sector || '其他';
   saveWatchlistConfig();
 }
 
 async function deleteStock(code) {
-  const name = watchlistConfig?.stocks?.[code] || code;
+  if (!watchlistConfig?.stocks) { loadWatchlistConfig(); return; }
+  const name = watchlistConfig.stocks[code] || code;
   if (!confirm('删除 ' + name + ' ?')) return;
-  if (!watchlistConfig) return;
   delete watchlistConfig.stocks[code];
   delete watchlistConfig.sectors[code];
   saveWatchlistConfig();
@@ -420,11 +423,25 @@ async function saveWatchlistConfig() {
     });
     const data = await r.json();
     if (data.ok) {
-      toast('自选已保存 (' + data.count + '只)');
-      await loadAllData();
+      // 自动重新拉数据以更新自选列表
+      await callApiDirect('/api/export', 'btnExport');
+      toast('自选已保存，行情已刷新 (' + data.count + '只)');
       renderTab('watchlist');
+    } else {
+      toast('保存失败: ' + (data.error || ''), true);
     }
   } catch(e) { toast('保存失败: ' + e.message, true); }
+}
+
+// 内部调用API（不更新按钮状态）
+async function callApiDirect(endpoint) {
+  if (!SERVER) return;
+  try {
+    const r = await fetch(SERVER + endpoint);
+    await r.json();
+    await loadAllData();
+    renderAll();
+  } catch(e) {}
 }
 
 // Also detect watchlist on init
@@ -436,6 +453,7 @@ async function detectLive() {
       document.getElementById('liveDot').className = 'live-dot on';
       document.getElementById('liveLabel').textContent = '实时';
       await loadWatchlistConfig();
+      if (!watchlistConfig) watchlistConfig = { stocks: {}, sectors: {} };
       setInterval(refreshAll, 30000);
     }
   } catch(e) {}
