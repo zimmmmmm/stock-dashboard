@@ -152,7 +152,19 @@ class DashboardServer(http.server.SimpleHTTPRequestHandler):
             api_req = urllib.request.Request(base_url, data=req_body, headers=headers)
             with urllib.request.urlopen(api_req, timeout=60) as resp:
                 data = json.loads(resp.read())
-                text = data['content'][0]['text']
+                # 兼容 Anthropic 和 DeepSeek 两种响应格式
+                text = ''
+                if 'content' in data:
+                    if isinstance(data['content'], list) and len(data['content']) > 0:
+                        text = data['content'][0].get('text', '')
+                    elif isinstance(data['content'], str):
+                        text = data['content']
+                elif 'choices' in data:
+                    text = data['choices'][0].get('message', {}).get('content', '')
+                elif 'message' in data:
+                    text = data['message'].get('content', '') if isinstance(data['message'], dict) else str(data['message'])
+                else:
+                    text = json.dumps(data, ensure_ascii=False)
                 return self.json_resp({'ok': True, 'text': text})
 
         except urllib.error.HTTPError as e:
