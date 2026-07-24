@@ -1,0 +1,20 @@
+{
+  "updated": "2026-07-24T15:30:00",
+  "positions": [
+    {
+      "code": "000815", "name": "美利云",
+      "shares": 5000, "cost": 15.50,
+      "current_price": 17.74, "pl_pct": 14.45, "pl_amount": 11200,
+      "board_level": 4, "entry_date": "2026-07-22",
+      "note": "4板封死，继续持有"
+    },
+    {
+      "code": "", "name": "万通发展",
+      "shares": 2000, "cost": 15.94,
+      "current_price": 15.94, "pl_pct": 0, "pl_amount": 0,
+      "board_level": 0, "entry_date": "2026-07-23",
+      "note": "浮亏中，待处理"
+    }
+  ],
+  "total_pl": 11200
+}

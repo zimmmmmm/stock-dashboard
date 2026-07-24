@@ -1,0 +1,80 @@
+{
+  "updated": "2026-07-24T10:51:50.420480",
+  "entries": [
+    {
+      "date": "2026-07-23",
+      "day_of_week": "周三",
+      "source_file": "2026-07-23-交易日志.md",
+      "market_close": {
+        "shanghai": {
+          "price": 3867.0,
+          "pct": 0.07
+        },
+        "shenzhen": {
+          "price": 14061.0,
+          "pct": -1.42
+        },
+        "chuangyeban": {
+          "price": 3567.0,
+          "pct": -3.23
+        },
+        "kechuang50": {
+          "price": 50.0,
+          "pct": -2.26
+        },
+        "breadth": {
+          "up": 0,
+          "down": 0,
+          "limit_up": 46,
+          "limit_down": 5
+        }
+      },
+      "lianban": [
+        {
+          "level": 5,
+          "stocks": [
+            {
+              "name": "立新能源",
+              "code": "001258"
+            }
+          ]
+        },
+        {
+          "level": 3,
+          "stocks": [
+            {
+              "name": "华银电力",
+              "code": "600744"
+            }
+          ]
+        },
+        {
+          "level": 2,
+          "stocks": [
+            {
+              "name": "共进股份",
+              "code": "603118"
+            }
+          ]
+        }
+      ],
+      "sectors": [],
+      "trades": [
+        {
+          "name": "| 晋控电力",
+          "code": "000767",
+          "action": "7/22尾盘竞价买→7/23已出清",
+          "cost": "3.99",
+          "status": "✅ 出清"
+        },
+        {
+          "name": "| 美利云",
+          "code": "000815",
+          "action": "持有中，4板封死",
+          "cost": "—",
+          "status": "✅ 持有"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A股超短盯盘仪表盘</title>
+<style>
+/* ===== Variables & Reset ===== */
+:root {
+  --bg: #0f1117; --bg-card: #1a1d27; --bg-hover: #22252f;
+  --text: #e1e4e8; --text-dim: #8b949e; --text-bright: #ffffff;
+  --red: #e74c3c; --green: #27ae60; --orange: #e67e22; --yellow: #f1c40f;
+  --blue: #3498db; --purple: #9b59b6;
+  --border: #30363d; --accent: #58a6ff;
+  --radius: 10px; --gap: 12px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: "Microsoft YaHei","PingFang SC",sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+a { color: var(--accent); text-decoration: none; }
+
+/* ===== Top Bar ===== */
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background: var(--bg-card); border-bottom: 1px solid var(--border); }
+.topbar h1 { font-size: 18px; color: var(--text-bright); }
+.topbar .meta { display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--text-dim); }
+.topbar .live-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+.topbar .live-dot.on { background: var(--green); animation: pulse 2s infinite; }
+.topbar .live-dot.off { background: #555; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ===== Tab Bar ===== */
+.tab-bar { display: flex; gap: 2px; padding: 0 20px; background: var(--bg-card); border-bottom: 1px solid var(--border); }
+.tab-btn { padding: 10px 18px; cursor: pointer; border: none; background: none; color: var(--text-dim); font-size: 14px; border-bottom: 2px solid transparent; transition: all .15s; }
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ===== Content ===== */
+.content { padding: 16px 20px; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ===== Cards ===== */
+.card { background: var(--bg-card); border-radius: var(--radius); padding: 16px; border: 1px solid var(--border); }
+.card-grid { display: grid; gap: var(--gap); }
+.card-grid.col4 { grid-template-columns: repeat(4,1fr); }
+.card-grid.col3 { grid-template-columns: repeat(3,1fr); }
+.card-grid.col2 { grid-template-columns: repeat(2,1fr); }
+
+.index-card { text-align: center; }
+.index-card .name { font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
+.index-card .price { font-size: 28px; font-weight: bold; color: var(--text-bright); }
+.index-card .pct { font-size: 16px; margin-top: 4px; }
+.pct-up { color: var(--red); }
+.pct-down { color: var(--green); }
+.pct-flat { color: var(--text-dim); }
+
+.stat-row { display: flex; justify-content: space-around; margin-top: 16px; }
+.stat-item { text-align: center; }
+.stat-item .val { font-size: 22px; font-weight: bold; }
+.stat-item .lbl { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+/* ===== Tables ===== */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px 10px; border-bottom: 2px solid var(--border); color: var(--text-dim); font-weight: normal; cursor: pointer; white-space: nowrap; }
+th:hover { color: var(--text); }
+td { padding: 6px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+tr:hover { background: var(--bg-hover); }
+.sort-asc::after { content: ' ▲'; }
+.sort-desc::after { content: ' ▼'; }
+
+/* ===== Badges ===== */
+.badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+.badge-zt { background: var(--red); color: #fff; }
+.badge-up { color: var(--red); }
+.badge-down { color: var(--green); }
+.badge-hot { background: var(--orange); color: #fff; }
+.badge-warm { background: var(--yellow); color: #000; }
+.badge-neutral { background: #555; color: #fff; }
+.badge-info { background: var(--blue); color: #fff; }
+.badge-warn { background: var(--purple); color: #fff; }
+
+/* ===== Sector chips ===== */
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.chip { padding: 4px 12px; border-radius: 16px; font-size: 12px; cursor: pointer; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-dim); }
+.chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ===== Pyramid ===== */
+.pyramid { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
+.pyramid-row { display: flex; align-items: center; gap: 8px; }
+.pyramid-lvl { font-size: 13px; font-weight: bold; min-width: 44px; color: var(--accent); }
+.pyramid-content { display: flex; flex-wrap: wrap; gap: 4px; }
+.pyramid-stock { font-size: 12px; padding: 3px 8px; background: var(--bg-hover); border-radius: 4px; }
+
+/* ===== Strategy Cards ===== */
+.strat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: var(--gap); }
+.strat-card { background: var(--bg-hover); border-radius: var(--radius); padding: 16px; cursor: pointer; border: 2px solid transparent; transition: all .15s; }
+.strat-card:hover { border-color: var(--accent); }
+.strat-card.expanded { border-color: var(--accent); grid-column: 1/-1; }
+.strat-card .icon { font-size: 28px; margin-bottom: 8px; }
+.strat-card .title { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+.strat-card .desc { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+.strat-card .trigger { font-size: 11px; color: var(--accent); }
+.strat-detail { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.strat-card.expanded .strat-detail { display: block; }
+.strat-step { margin: 8px 0; padding-left: 16px; border-left: 2px solid var(--accent); }
+.strat-step .step-title { font-size: 13px; font-weight: bold; margin-bottom: 4px; }
+.strat-step .step-body { font-size: 12px; color: var(--text-dim); }
+
+/* ===== Journal date nav ===== */
+.date-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.date-nav button { padding: 6px 14px; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text); border-radius: 6px; cursor: pointer; }
+.date-nav button:hover { background: var(--accent); color: #fff; }
+.date-nav .current { font-size: 16px; font-weight: bold; }
+
+/* ===== Section titles ===== */
+.section-title { font-size: 15px; font-weight: bold; margin: 16px 0 10px; color: var(--text-bright); }
+.section-title:first-child { margin-top: 0; }
+
+/* ===== Editor ===== */
+input, textarea { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 13px; width: 100%; }
+input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+.btn { padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-sm { padding: 4px 10px; font-size: 11px; }
+
+/* ===== Responsive ===== */
+@media (max-width: 900px) {
+  .card-grid.col4 { grid-template-columns: repeat(2,1fr); }
+  .strat-grid { grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 600px) {
+  .card-grid.col4,.card-grid.col3,.card-grid.col2 { grid-template-columns: 1fr; }
+  .strat-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>A股超短仪表盘</h1>
+  <div class="meta">
+    <span><span class="live-dot off" id="liveDot"></span><span id="liveLabel">静态</span></span>
+    <span id="lastUpdate">--</span>
+    <button class="btn btn-sm btn-primary" onclick="refreshAll()">刷新</button>
+  </div>
+</div>
+
+<div class="tab-bar" id="tabBar"></div>
+
+<div class="content" id="content"></div>
+
+<script>
+// ============ DATA STORE ============
+const DATA = { market: null, limitUps: null, positions: null, journal: null, strategies: null };
+const TABS = [
+  { id: 'market', label: '大盘' },
+  { id: 'watchlist', label: '自选' },
+  { id: 'limitups', label: '涨停板' },
+  { id: 'positions', label: '持仓' },
+  { id: 'sectors', label: '板块强度' },
+  { id: 'journal', label: '交易记录' },
+  { id: 'strategies', label: '策略库' },
+];
+let currentTab = 'market';
+let watchlistSort = { col: 'pct', asc: false };
+
+// ============ INIT ============
+async function init() {
+  renderTabBar();
+  switchTab('market');
+  await loadAllData();
+  renderAll();
+  detectLive();
+}
+
+async function loadAllData() {
+  const fetches = [
+    fetch('data/market.json').then(r => r.json()).then(d => DATA.market = d).catch(() => {}),
+    fetch('data/limit-ups.json').then(r => r.json()).then(d => DATA.limitUps = d).catch(() => {}),
+    fetch('data/positions.json').then(r => r.json()).then(d => DATA.positions = d).catch(() => {}),
+    fetch('data/journal.json').then(r => r.json()).then(d => DATA.journal = d).catch(() => {}),
+    fetch('data/strategies.json').then(r => r.json()).then(d => DATA.strategies = d).catch(() => {}),
+  ];
+  await Promise.allSettled(fetches);
+  updateMeta();
+}
+
+function updateMeta() {
+  const t = DATA.market?.updated || DATA.limitUps?.updated || '';
+  document.getElementById('lastUpdate').textContent = t ? '更新: ' + t.slice(11,19) : '无数据';
+}
+
+// ============ TAB NAVIGATION ============
+function renderTabBar() {
+  document.getElementById('tabBar').innerHTML = TABS.map(t =>
+    `<button class="tab-btn${t.id===currentTab?' active':''}" onclick="switchTab('${t.id}')">${t.label}</button>`
+  ).join('');
+}
+
+function switchTab(id) {
+  currentTab = id;
+  renderTabBar();
+  renderTab(id);
+}
+
+// ============ RENDER ============
+function renderAll() {
+  renderTab(currentTab);
+}
+
+function renderTab(id) {
+  const c = document.getElementById('content');
+  switch (id) {
+    case 'market': c.innerHTML = renderMarket(); break;
+    case 'watchlist': c.innerHTML = renderWatchlist(); break;
+    case 'limitups': c.innerHTML = renderLimitUps(); break;
+    case 'positions': c.innerHTML = renderPositions(); break;
+    case 'sectors': c.innerHTML = renderSectors(); break;
+    case 'journal': c.innerHTML = renderJournal(); break;
+    case 'strategies': c.innerHTML = renderStrategies(); break;
+  }
+}
+
+// ============ MARKET TAB ============
+function renderMarket() {
+  if (!DATA.market) return '<div class="content"><p>暂无数据，请先运行 export_data.py</p></div>';
+  const m = DATA.market;
+  let h = '<div class="content">';
+
+  // Index cards
+  h += '<div class="card-grid col4">';
+  for (const idx of m.indices) {
+    const cls = idx.pct > 0 ? 'pct-up' : idx.pct < 0 ? 'pct-down' : 'pct-flat';
+    h += `<div class="card index-card">
+      <div class="name">${idx.name}</div>
+      <div class="price">${idx.price.toFixed(2)}</div>
+      <div class="pct ${cls}">${idx.pct>=0?'+':''}${idx.pct.toFixed(2)}%</div>
+    </div>`;
+  }
+  h += '</div>';
+
+  // Summary stats
+  const s = m.summary;
+  h += '<div class="card" style="margin-top:16px"><div class="stat-row">';
+  h += statItem('红盘', s.ups, 'badge-up');
+  h += statItem('绿盘', s.downs, 'badge-down');
+  h += statItem('平盘', s.flat, '');
+  h += statItem('涨停', s.limit_ups, 'badge-zt');
+  h += statItem('总计', s.total, '');
+  h += '</div></div>';
+
+  // Breadth bar
+  if (s.ups + s.downs > 0) {
+    const upPct = s.ups/(s.ups+s.downs)*100;
+    h += `<div class="card" style="margin-top:12px">
+      <div style="font-size:13px;margin-bottom:6px">涨跌分布</div>
+      <div style="display:flex;height:20px;border-radius:4px;overflow:hidden">
+        <div style="width:${upPct}%;background:var(--red)"></div>
+        <div style="width:${100-upPct}%;background:var(--green)"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);margin-top:4px">
+        <span>涨 ${s.ups}</span><span>跌 ${s.downs}</span>
+      </div>
+    </div>`;
+  }
+
+  // Sector summary
+  if (s.sectors) {
+    h += '<div class="section-title">板块概览</div><div class="chips">';
+    for (const [name, st] of Object.entries(s.sectors)) {
+      h += `<span class="chip">${name} ${st.ups}/${st.count}${st.limit_ups>0?' 🔥'+st.limit_ups:''}</span>`;
+    }
+    h += '</div>';
+  }
+
+  h += '</div>';
+  return h;
+}
+
+function statItem(label, val, cls) {
+  return `<div class="stat-item"><div class="val ${cls}">${val}</div><div class="lbl">${label}</div></div>`;
+}
+
+// ============ WATCHLIST TAB ============
+function renderWatchlist() {
+  if (!DATA.market) return '<div class="content"><p>暂无数据</p></div>';
+  const wl = DATA.market.watchlist;
+  let h = '<div class="content">';
+
+  // Summary chips
+  const sectorNames = [...new Set(wl.map(s => s.sector))];
+  h += '<div class="chips">';
+  h += `<span class="chip active" onclick="filterWatchlist('all')">全部</span>`;
+  for (const sn of sectorNames) {
+    const count = wl.filter(s => s.sector === sn).length;
+    h += `<span class="chip" onclick="filterWatchlist('${sn}')">${sn}(${count})</span>`;
+  }
+  h += '</div>';
+
+  // Table
+  h += '<div style="overflow-x:auto"><table><thead><tr>';
+  const cols = [
+    { key: 'name', label: '名称' }, { key: 'code', label: '代码' },
+    { key: 'price', label: '现价' }, { key: 'pct', label: '涨幅' },
+    { key: 'turnover', label: '换手' }, { key: 'amount', label: '成交(亿)' },
+    { key: 'status', label: '状态' },
+  ];
+  for (const col of cols) {
+    h += `<th onclick="sortWatchlist('${col.key}')">${col.label}</th>`;
+  }
+  h += '</tr></thead><tbody id="wlBody"></tbody></table></div>';
+  h += '</div>';
+
+  setTimeout(() => renderWatchlistBody(), 0);
+  return h;
+}
+
+function renderWatchlistBody(filter) {
+  let wl = [...(DATA.market?.watchlist || [])];
+  if (filter && filter !== 'all') wl = wl.filter(s => s.sector === filter);
+  // Sort
+  const key = watchlistSort.col;
+  wl.sort((a, b) => {
+    let va = a[key], vb = b[key];
+    if (typeof va === 'string') va = va.toLowerCase(), vb = (vb||'').toLowerCase();
+    const cmp = va > vb ? 1 : va < vb ? -1 : 0;
+    return watchlistSort.asc ? cmp : -cmp;
+  });
+
+  const body = document.getElementById('wlBody');
+  if (!body) return;
+  body.innerHTML = wl.map(s => {
+    const pctCls = s.pct > 0 ? 'badge-up' : s.pct < 0 ? 'badge-down' : '';
+    const badgeCls = s.status === '涨停' ? 'badge-zt' : s.status === '强势' ? 'badge-hot' : s.status === '飘红' ? 'badge-up' : s.status === '弱势' ? 'badge-neutral' : 'badge-down';
+    return `<tr>
+      <td>${s.name}</td><td style="color:var(--text-dim)">${s.code}</td>
+      <td>${s.price.toFixed(2)}</td>
+      <td class="${pctCls}">${s.pct>=0?'+':''}${s.pct.toFixed(2)}%</td>
+      <td>${s.turnover.toFixed(1)}%</td>
+      <td>${s.amount.toFixed(1)}</td>
+      <td><span class="badge ${badgeCls}">${s.status}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function sortWatchlist(col) {
+  if (watchlistSort.col === col) watchlistSort.asc = !watchlistSort.asc;
+  else { watchlistSort.col = col; watchlistSort.asc = false; }
+  renderWatchlistBody();
+}
+
+function filterWatchlist(filter) {
+  document.querySelectorAll('.chips .chip').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  renderWatchlistBody(filter);
+}
+
+// ============ LIMIT-UPS TAB ============
+function renderLimitUps() {
+  if (!DATA.limitUps) return '<div class="content"><p>暂无涨停板数据</p></div>';
+  const lu = DATA.limitUps;
+  let h = '<div class="content">';
+  h += `<div class="card" style="margin-bottom:12px"><span style="font-size:24px;font-weight:bold">${lu.count}</span> 只涨停</div>`;
+
+  if (lu.sector_distribution) {
+    h += '<div class="chips">';
+    for (const [name, count] of Object.entries(lu.sector_distribution)) {
+      h += `<span class="chip">${name}: ${count}</span>`;
+    }
+    h += '</div>';
+  }
+
+  if (lu.stocks?.length > 0) {
+    h += '<div style="overflow-x:auto"><table><thead><tr>';
+    h += '<th>#</th><th>名称</th><th>代码</th><th>现价</th><th>涨幅</th><th>换手</th><th>成交(亿)</th>';
+    h += '</tr></thead><tbody>';
+    lu.stocks.forEach((s, i) => {
+      h += `<tr>
+        <td>${i+1}</td><td>${s.name}</td><td style="color:var(--text-dim)">${s.code}</td>
+        <td>${s.price}</td><td class="badge-up">+${s.pct}%</td>
+        <td>${(s.turnover||0).toFixed(1)}%</td><td>${(s.amount||0).toFixed(1)}</td>
+      </tr>`;
+    });
+    h += '</tbody></table></div>';
+  }
+  h += '</div>';
+  return h;
+}
+
+// ============ POSITIONS TAB ============
+function renderPositions() {
+  let h = '<div class="content">';
+  if (!DATA.positions?.positions?.length) {
+    h += '<div class="card"><p>暂无持仓数据。点击下方按钮初始化。</p></div>';
+  } else {
+    const pos = DATA.positions;
+    h += '<div class="card" style="margin-bottom:12px"><div class="stat-row">';
+    h += statItem('持仓数', pos.positions.length, '');
+    h += statItem('总市值', pos.positions.reduce((s,p)=>s+p.current_price*p.shares,0).toFixed(0), '');
+    if (pos.total_pl) h += statItem('总盈亏', pos.total_pl.toFixed(0), pos.total_pl>=0?'badge-up':'badge-down');
+    h += '</div></div>';
+
+    h += '<div style="overflow-x:auto"><table><thead><tr>';
+    h += '<th>名称</th><th>代码</th><th>股数</th><th>成本</th><th>现价</th><th>盈亏%</th><th>状态</th>';
+    h += '</tr></thead><tbody>';
+    for (const p of pos.positions) {
+      const plCls = p.pl_pct >= 0 ? 'badge-up' : 'badge-down';
+      h += `<tr>
+        <td>${p.name}</td><td style="color:var(--text-dim)">${p.code}</td>
+        <td>${p.shares}</td><td>${p.cost}</td><td>${p.current_price||'--'}</td>
+        <td class="${plCls}">${(p.pl_pct||0)>=0?'+':''}${(p.pl_pct||0).toFixed(1)}%</td>
+        <td>${p.note||'--'}</td>
+      </tr>`;
+    }
+    h += '</tbody></table></div>';
+  }
+
+  h += `<div class="card" style="margin-top:12px">
+    <div class="section-title">编辑持仓</div>
+    <textarea id="posEditor" rows="8" style="font-family:monospace;font-size:12px">${JSON.stringify(DATA.positions||{positions:[]},null,2)}</textarea>
+    <div style="margin-top:8px;display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="savePositions()">保存</button>
+      <button class="btn btn-sm" onclick="loadAllData().then(renderTab('positions'))">重置</button>
+    </div>
+    <p style="font-size:11px;color:var(--text-dim);margin-top:6px">保存到浏览器本地。同步到GitHub需手动更新 data/positions.json</p>
+  </div>`;
+  h += '</div>';
+  return h;
+}
+
+function savePositions() {
+  try {
+    DATA.positions = JSON.parse(document.getElementById('posEditor').value);
+    localStorage.setItem('positions', JSON.stringify(DATA.positions));
+    renderTab('positions');
+  } catch(e) { alert('JSON格式错误: '+e.message); }
+}
+
+// ============ SECTORS TAB ============
+function renderSectors() {
+  let h = '<div class="content">';
+  const journal = DATA.journal?.entries?.[0];
+  if (!journal?.sectors?.length && !journal?.lianban?.length) {
+    h += '<div class="card"><p>暂无板块数据。请先运行 convert_records.py</p></div>';
+    h += '</div>';
+    return h;
+  }
+
+  // Sector ranking
+  if (journal.sectors?.length) {
+    h += '<div class="section-title">板块强度排序</div>';
+    h += '<table><thead><tr><th>排名</th><th>板块</th><th>强度</th><th>涨停数</th><th>阶段</th></tr></thead><tbody>';
+    for (const s of journal.sectors) {
+      h += `<tr><td>${s.rank}</td><td>${s.name}</td><td>${s.heat}</td><td>${s.limit_up_count}</td><td>${s.phase}</td></tr>`;
+    }
+    h += '</tbody></table>';
+  }
+
+  // Lianban pyramid
+  if (journal.lianban?.length) {
+    h += '<div class="section-title">连板梯队</div><div class="pyramid">';
+    for (const lv of journal.lianban) {
+      h += `<div class="pyramid-row">
+        <span class="pyramid-lvl">${lv.level}板</span>
+        <span class="pyramid-content">`;
+      for (const st of lv.stocks) {
+        h += `<span class="pyramid-stock">${st.name}(${st.code})</span>`;
+      }
+      h += '</span></div>';
+    }
+    h += '</div>';
+  }
+
+  h += '</div>';
+  return h;
+}
+
+// ============ JOURNAL TAB ============
+function renderJournal() {
+  let h = '<div class="content">';
+  if (!DATA.journal?.entries?.length) {
+    h += '<div class="card"><p>暂无交易记录。请先运行 convert_records.py</p></div>';
+    h += '</div>';
+    return h;
+  }
+
+  const entries = DATA.journal.entries;
+  if (window._journalIdx === undefined) window._journalIdx = entries.length - 1;
+  const idx = window._journalIdx;
+  const entry = entries[idx];
+
+  const renderEntry = (e) => {
+    let html = '';
+    html += `<div class="date-nav">
+      <button onclick="navigateJournal(-1)">← 前日</button>
+      <span class="current">${e.date} ${e.day_of_week}</span>
+      <button onclick="navigateJournal(1)">后日 →</button>
+    </div>`;
+
+    // Market close
+    if (e.market_close) {
+      html += '<div class="section-title">收盘数据</div>';
+      html += '<div class="card-grid col4" style="margin-bottom:12px">';
+      const idxNames = { shanghai: '上证', shenzhen: '深证', chuangyeban: '创业板', kechuang50: '科创50' };
+      for (const [k, v] of Object.entries(e.market_close)) {
+        if (k === 'breadth') continue;
+        const cls = v.pct > 0 ? 'pct-up' : v.pct < 0 ? 'pct-down' : 'pct-flat';
+        html += `<div class="card index-card">
+          <div class="name">${idxNames[k]||k}</div>
+          <div class="price">${v.price}</div>
+          <div class="pct ${cls}">${v.pct>=0?'+':''}${v.pct}%</div>
+        </div>`;
+      }
+      html += '</div>';
+
+      const b = e.market_close.breadth;
+      if (b) {
+        html += `<div class="card" style="margin-bottom:12px"><div class="stat-row">
+          ${statItem('涨停', b.limit_up, 'badge-zt')}
+          ${statItem('跌停', b.limit_down, 'badge-down')}
+          ${statItem('涨家', b.up, 'badge-up')}
+          ${statItem('跌家', b.down, 'badge-down')}
+        </div></div>`;
+      }
+    }
+
+    // Lianban
+    if (e.lianban?.length) {
+      html += '<div class="section-title">连板梯队</div><div class="pyramid">';
+      for (const lv of e.lianban) {
+        html += `<div class="pyramid-row"><span class="pyramid-lvl">${lv.level}板</span><span class="pyramid-content">`;
+        for (const st of lv.stocks) html += `<span class="pyramid-stock">${st.name}(${st.code})</span>`;
+        html += '</span></div>';
+      }
+      html += '</div>';
+    }
+
+    // Trades
+    if (e.trades?.length) {
+      html += '<div class="section-title">操作记录</div>';
+      html += '<table><thead><tr><th>标的</th><th>代码</th><th>操作</th><th>成本</th><th>状态</th></tr></thead><tbody>';
+      for (const t of e.trades) {
+        html += `<tr><td>${t.name}</td><td style="color:var(--text-dim)">${t.code}</td><td>${t.action}</td><td>${t.cost}</td><td>${t.status}</td></tr>`;
+      }
+      html += '</tbody></table>';
+    }
+
+    if (e.source_file) {
+      html += `<p style="margin-top:12px;font-size:12px;color:var(--text-dim)">源文件: records/${e.source_file}</p>`;
+    }
+    return html;
+  };
+
+  h += `<div id="journalContent">${renderEntry(entry)}</div>`;
+  h += '</div>';
+  window._journalIdx = idx;
+  window._journalEntries = entries;
+  return h;
+}
+
+function navigateJournal(dir) {
+  if (!window._journalEntries) return;
+  let idx = (window._journalIdx || 0) + dir;
+  if (idx < 0 || idx >= window._journalEntries.length) return;
+  window._journalIdx = idx;
+  renderTab('journal');
+}
+
+// ============ STRATEGIES TAB ============
+function renderStrategies() {
+  let h = '<div class="content">';
+
+  const builtinStrats = [
+    { id:'scan', icon:'🔍', name:'扫盘', desc:'扫描当前板块走势和昨日涨停股分时，筛选可介入个股', trigger:'指令: 扫盘' },
+    { id:'relay', icon:'⚡', name:'接力', desc:'分析涨停板和连板梯队，筛选下次开盘可接力的个股', trigger:'指令: 接力' },
+    { id:'news', icon:'📰', name:'消息', desc:'解析用户粘贴的消息，拆解利好链条，筛选受益标的', trigger:'指令: 消息 + 粘贴内容' },
+    { id:'info', icon:'🔎', name:'资讯', desc:'主动搜索收盘后至今的市场消息，评估重要度/值博率', trigger:'指令: 资讯' },
+    { id:'review', icon:'📋', name:'复盘', desc:'按时间线复盘当日大盘/板块异动/连板梯队/板块强度', trigger:'指令: 复盘' },
+    { id:'deduce', icon:'🧠', name:'推衍', desc:'复盘+推演下次开盘路径+每条路径绑定标的+竞价确认', trigger:'指令: 推衍' },
+  ];
+
+  if (DATA.strategies?.strategies) {
+    // Use structured data with steps if available
+    h += '<div class="strat-grid">';
+    for (const s of DATA.strategies.strategies) {
+      h += renderStratCard(s);
+    }
+    h += '</div>';
+  } else {
+    // Fallback to built-in
+    h += '<div class="strat-grid">';
+    for (const s of builtinStrats) {
+      h += `<div class="strat-card" onclick="this.classList.toggle('expanded')">
+        <div class="icon">${s.icon}</div>
+        <div class="title">${s.name}</div>
+        <div class="desc">${s.desc}</div>
+        <div class="trigger">${s.trigger}</div>
+        <div class="strat-detail"><p style="color:var(--text-dim)">详细框架见项目 memory/ 目录</p></div>
+      </div>`;
+    }
+    h += '</div>';
+  }
+
+  h += '</div>';
+  return h;
+}
+
+function renderStratCard(s) {
+  let h = `<div class="strat-card" onclick="this.classList.toggle('expanded')">
+    <div class="icon">${s.emoji||'📌'}</div>
+    <div class="title">${s.name}</div>
+    <div class="desc">${s.description||s.summary||''}</div>
+    <div class="trigger">${s.trigger||''}</div>
+    <div class="strat-detail">`;
+  if (s.steps) {
+    for (const step of s.steps) {
+      h += `<div class="strat-step">
+        <div class="step-title">Step ${step.number}: ${step.title}</div>
+        <div class="step-body">${(step.actions||step.output||[]).join(' | ')}</div>
+      </div>`;
+    }
+    if (s.screening_rules?.length) {
+      h += `<div class="strat-step"><div class="step-title">选股规则</div><div class="step-body">${s.screening_rules.join(' | ')}</div></div>`;
+    }
+  }
+  h += '</div></div>';
+  return h;
+}
+
+// ============ LIVE MODE ============
+async function detectLive() {
+  try {
+    const r = await fetch('http://localhost:8765/api/health', { signal: AbortSignal.timeout(1000) });
+    if (r.ok) {
+      document.getElementById('liveDot').className = 'live-dot on';
+      document.getElementById('liveLabel').textContent = '实时';
+      setInterval(refreshAll, 30000);
+    }
+  } catch(e) {}
+}
+
+async function refreshAll() {
+  await loadAllData();
+  renderAll();
+}
+
+// ============ BOOT ============
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
