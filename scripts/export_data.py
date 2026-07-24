@@ -40,12 +40,20 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 
 def fetch_tencent(codes):
-    """拉腾讯行情数据，处理GBK编码"""
-    url = f"http://qt.gtimg.cn/q={','.join(codes)}"
+    """拉腾讯行情数据，自动添加交易所前缀"""
+    # 添加交易所前缀: 60xxxx→sh, 00xxxx/002xxx→sz, s_→保持
+    prefixed = []
+    for c in codes:
+        if c.startswith('s_'):
+            prefixed.append(c)
+        elif c.startswith('60') or c.startswith('68'):
+            prefixed.append('sh' + c)
+        else:
+            prefixed.append('sz' + c)
+    url = f"http://qt.gtimg.cn/q={','.join(prefixed)}"
     try:
         r = subprocess.run(['curl', '-s', '--connect-timeout', '5', '--max-time', '10', url],
                          capture_output=True, timeout=12)
-        # Decode GBK with error tolerance, then re-encode to clean UTF-8
         raw = r.stdout.decode('gbk', errors='replace')
         return raw
     except Exception as e:
@@ -82,8 +90,11 @@ def fetch_limit_ups():
         return []
 
 
-def parse_tencent(raw):
-    """解析腾讯API响应"""
+def parse_tencent(raw, is_index=False):
+    """解析腾讯API响应
+    股票: parts[3]=现价, parts[4]=昨收, parts[5]=今开
+    指数: parts[3]=现价, parts[4]=涨跌点(不是昨收!), parts[5]=今开
+    """
     results = {}
     for line in raw.split('\n'):
         if '="' not in line:
@@ -93,17 +104,31 @@ def parse_tencent(raw):
             name = parts[1]
             code = parts[2]
             price = float(parts[3]) if parts[3] else 0
-            prev_close = float(parts[4]) if parts[4] else 0
-            pct = round((price - prev_close) / prev_close * 100, 2) if prev_close else 0
-            results[code] = {
-                'code': code, 'name': name,
-                'price': price, 'prev_close': prev_close, 'pct': pct,
-                'open': float(parts[5]) if parts[5] else 0,
-                'high': float(parts[33]) if len(parts) > 33 and parts[33] else 0,
-                'low': float(parts[34]) if len(parts) > 34 and parts[34] else 0,
-                'turnover': float(parts[38]) if len(parts) > 38 and parts[38] else 0,
-                'amount': round(float(parts[37]) / 10000, 1) if len(parts) > 37 and parts[37] else 0,
-            }
+
+            if is_index:
+                # 指数: parts[4]是涨跌点，不是昨收
+                point_change = float(parts[4]) if parts[4] else 0
+                prev_close = price - point_change
+                pct = round(point_change / prev_close * 100, 2) if prev_close else 0
+                open_price = float(parts[5]) if parts[5] else 0
+                results[code] = {
+                    'code': code, 'name': name,
+                    'price': price, 'prev_close': prev_close, 'pct': pct,
+                    'open': open_price,
+                    'high': 0, 'low': 0, 'turnover': 0, 'amount': 0,
+                }
+            else:
+                prev_close = float(parts[4]) if parts[4] else 0
+                pct = round((price - prev_close) / prev_close * 100, 2) if prev_close else 0
+                results[code] = {
+                    'code': code, 'name': name,
+                    'price': price, 'prev_close': prev_close, 'pct': pct,
+                    'open': float(parts[5]) if parts[5] else 0,
+                    'high': float(parts[33]) if len(parts) > 33 and parts[33] else 0,
+                    'low': float(parts[34]) if len(parts) > 34 and parts[34] else 0,
+                    'turnover': float(parts[38]) if len(parts) > 38 and parts[38] else 0,
+                    'amount': round(float(parts[37]) / 10000, 1) if len(parts) > 37 and parts[37] else 0,
+                }
         except (ValueError, IndexError):
             continue
     return results
@@ -125,25 +150,26 @@ def get_status(pct, turnover=0):
 
 def export_market():
     """导出指数+自选池"""
-    # 拉指数
+    # 拉指数（腾讯API对指数返回 价格/涨跌点，不是昨收）
     idx_raw = fetch_tencent(['s_sh000001', 's_sz399001', 's_sz399006', 's_sh000688'])
-    idx_data = parse_tencent(idx_raw)
+    idx_data = parse_tencent(idx_raw, is_index=True)
 
     indices = []
-    idx_names = {'s_sh000001': '上证指数', 's_sz399001': '深证成指',
-                 's_sz399006': '创业板指', 's_sh000688': '科创50'}
-    for code, name in idx_names.items():
+    # API返回的代码不带s_前缀，需要映射
+    idx_code_map = {'000001': '上证指数', '399001': '深证成指',
+                    '399006': '创业板指', '000688': '科创50'}
+    for code, name in idx_code_map.items():
         d = idx_data.get(code, {})
         indices.append({
             'code': code, 'name': name,
-            'price': d.get('price', 0), 'pct': d.get('pct', 0),
+            'price': d.get('price', 0), 'pct': round(d.get('pct', 0), 2),
             'status': 'up' if d.get('pct', 0) > 0 else ('down' if d.get('pct', 0) < 0 else 'flat'),
         })
 
     # 拉自选池
     codes = list(WATCHLIST.keys())
     raw = fetch_tencent(codes)
-    quotes = parse_tencent(raw)
+    quotes = parse_tencent(raw, is_index=False)
 
     watchlist = []
     ups = downs = limit_ups = 0

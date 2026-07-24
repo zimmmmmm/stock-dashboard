@@ -19,13 +19,24 @@ body { font-family: "Microsoft YaHei","PingFang SC",sans-serif; background: var(
 a { color: var(--accent); text-decoration: none; }
 
 /* ===== Top Bar ===== */
-.topbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background: var(--bg-card); border-bottom: 1px solid var(--border); }
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background: var(--bg-card); border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 8px; }
 .topbar h1 { font-size: 18px; color: var(--text-bright); }
-.topbar .meta { display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--text-dim); }
+.topbar .meta { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-dim); flex-wrap: wrap; }
 .topbar .live-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
 .topbar .live-dot.on { background: var(--green); animation: pulse 2s infinite; }
 .topbar .live-dot.off { background: #555; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.topbar .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.btn-op { padding: 5px 12px; border: 1px solid var(--border); background: var(--bg-hover); color: var(--text); border-radius: 6px; cursor: pointer; font-size: 12px; white-space: nowrap; transition: all .15s; }
+.btn-op:hover { border-color: var(--accent); color: var(--accent); }
+.btn-op:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ===== Toast ===== */
+.toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 8px; color: #fff; font-size: 14px; z-index: 999; animation: slideUp .3s; max-width: 420px; }
+.toast-ok { background: var(--green); }
+.toast-err { background: var(--red); }
+@keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+.toast pre { font-size: 11px; margin-top: 6px; white-space: pre-wrap; max-height: 120px; overflow-y: auto; opacity: .9; }
 
 /* ===== Tab Bar ===== */
 .tab-bar { display: flex; gap: 2px; padding: 0 20px; background: var(--bg-card); border-bottom: 1px solid var(--border); }
@@ -138,12 +149,18 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
 
 <div class="topbar">
   <h1>A股超短仪表盘</h1>
+  <div class="actions">
+    <button class="btn-op" onclick="doExport()" id="btnExport">📡 拉行情</button>
+    <button class="btn-op" onclick="doConvert()" id="btnConvert">📝 转记录</button>
+    <button class="btn-op" onclick="doGitPush()" id="btnGit">☁ 同步</button>
+  </div>
   <div class="meta">
     <span><span class="live-dot off" id="liveDot"></span><span id="liveLabel">静态</span></span>
     <span id="lastUpdate">--</span>
     <button class="btn btn-sm btn-primary" onclick="refreshAll()">刷新</button>
   </div>
 </div>
+<div id="toastBox"></div>
 
 <div class="tab-bar" id="tabBar"></div>
 
@@ -628,15 +645,56 @@ function renderStratCard(s) {
 }
 
 // ============ LIVE MODE ============
+let SERVER = '';
+
 async function detectLive() {
   try {
     const r = await fetch('http://localhost:8765/api/health', { signal: AbortSignal.timeout(1000) });
     if (r.ok) {
+      SERVER = 'http://localhost:8765';
       document.getElementById('liveDot').className = 'live-dot on';
       document.getElementById('liveLabel').textContent = '实时';
       setInterval(refreshAll, 30000);
     }
   } catch(e) {}
+}
+
+// ============ ACTION BUTTONS ============
+async function callApi(endpoint, btnId) {
+  if (!SERVER) {
+    toast('请先启动服务: python scripts/server.py', true);
+    return;
+  }
+  const btn = document.getElementById(btnId);
+  btn.disabled = true;
+  btn.textContent = '...';
+  try {
+    const r = await fetch(SERVER + endpoint);
+    const data = await r.json();
+    if (data.ok) {
+      toast(data.action + ' 完成\n' + (data.output || ''));
+      await loadAllData();
+      renderAll();
+    } else {
+      toast(data.action + ' 失败\n' + (data.output || ''), true);
+    }
+  } catch(e) {
+    toast('连接失败: ' + e.message, true);
+  }
+  btn.disabled = false;
+  btn.textContent = btnId === 'btnExport' ? '📡 拉行情' : btnId === 'btnConvert' ? '📝 转记录' : '☁ 同步';
+}
+
+function doExport() { callApi('/api/export', 'btnExport'); }
+function doConvert() { callApi('/api/convert', 'btnConvert'); }
+function doGitPush() { callApi('/api/git-push', 'btnGit'); }
+
+function toast(msg, isErr) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (isErr ? 'toast-err' : 'toast-ok');
+  el.textContent = msg;
+  document.getElementById('toastBox').appendChild(el);
+  setTimeout(() => el.remove(), 5000);
 }
 
 async function refreshAll() {
