@@ -766,7 +766,11 @@ function renderStrategies() {
   if (sel) {
     h += `<div style="font-size:18px;font-weight:bold;margin-bottom:4px">${sel.emoji||''} ${sel.name}</div>`;
     h += `<div style="font-size:13px;color:var(--text-dim);margin-bottom:4px">${sel.description||''}</div>`;
-    h += `<div style="font-size:12px;color:var(--accent);margin-bottom:16px">${sel.trigger||''}</div>`;
+    h += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">`;
+    h += `<span style="font-size:12px;color:var(--accent)">${sel.trigger||''}</span>`;
+    h += `<button class="btn btn-sm btn-primary" onclick="copyAndExec('${sel.name}')">▶ 执行</button>`;
+    h += `<span id="execMsg" style="font-size:11px;color:var(--green);display:none">已复制！</span>`;
+    h += `</div>`;
 
     // Show steps from strategies.json
     if (sel.steps) {
@@ -803,6 +807,13 @@ function renderStrategies() {
 function selectStrategy(id) {
   selectedStrategy = id;
   renderTab('strategies');
+}
+
+function copyAndExec(name) {
+  navigator.clipboard.writeText(name).then(() => {
+    const el = document.getElementById('execMsg');
+    if (el) { el.style.display = 'inline'; setTimeout(() => el.style.display = 'none', 2000); }
+  }).catch(() => {});
 }
 
 // ============ LIVE MODE ============

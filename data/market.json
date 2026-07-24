@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-24T11:52:37.888745",
+  "updated": "2026-07-24T12:19:13.214358",
   "indices": [
     {
       "code": "000001",
@@ -277,6 +277,7 @@
     "limit_down": 0
   },
   "market_sectors": [],
+  "market_concepts": [],
   "watchlist_summary": {
     "total": 17,
     "ups": 7,

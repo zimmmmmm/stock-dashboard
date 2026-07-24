@@ -1,6 +1,17 @@
 {
-  "updated": "2026-07-24T11:52:38.078265",
-  "count": 0,
-  "stocks": [],
-  "sector_distribution": {}
+  "updated": "2026-07-24T12:19:13.898825",
+  "count": 1,
+  "stocks": [
+    {
+      "code": "001258",
+      "name": "立新能源",
+      "price": 13.32,
+      "pct": 9.99,
+      "turnover": 11.65,
+      "amount": 14.3
+    }
+  ],
+  "sector_distribution": {
+    "电力/能源": 1
+  }
 }
