@@ -199,6 +199,12 @@ async function loadAllData() {
     fetch('data/strategies.json').then(r => r.json()).then(d => DATA.strategies = d).catch(() => {}),
   ];
   await Promise.allSettled(fetches);
+  // Load strategy outputs
+  try {
+    const r = await fetch('data/strategy-outputs.json');
+    const d = await r.json();
+    strategyOutputs = d.outputs || {};
+  } catch(e) {}
   updateMeta();
 }
 
@@ -726,64 +732,77 @@ function navigateJournal(dir) {
 }
 
 // ============ STRATEGIES TAB ============
+let strategyOutputs = {};
+let selectedStrategy = 'scan-market';
+
 function renderStrategies() {
   let h = '<div class="content">';
+  h += '<div style="display:grid;grid-template-columns:280px 1fr;gap:16px;min-height:60vh">';
 
-  const builtinStrats = [
-    { id:'scan', icon:'🔍', name:'扫盘', desc:'扫描当前板块走势和昨日涨停股分时，筛选可介入个股', trigger:'指令: 扫盘' },
-    { id:'relay', icon:'⚡', name:'接力', desc:'分析涨停板和连板梯队，筛选下次开盘可接力的个股', trigger:'指令: 接力' },
-    { id:'news', icon:'📰', name:'消息', desc:'解析用户粘贴的消息，拆解利好链条，筛选受益标的', trigger:'指令: 消息 + 粘贴内容' },
-    { id:'info', icon:'🔎', name:'资讯', desc:'主动搜索收盘后至今的市场消息，评估重要度/值博率', trigger:'指令: 资讯' },
-    { id:'review', icon:'📋', name:'复盘', desc:'按时间线复盘当日大盘/板块异动/连板梯队/板块强度', trigger:'指令: 复盘' },
-    { id:'deduce', icon:'🧠', name:'推衍', desc:'复盘+推演下次开盘路径+每条路径绑定标的+竞价确认', trigger:'指令: 推衍' },
+  // LEFT: strategy list
+  const strats = DATA.strategies?.strategies || [
+    { id:'scan-market', name:'扫盘', emoji:'🔍', description:'扫描板块走势和涨停股分时，筛选可介入个股', trigger:'指令: 扫盘' },
+    { id:'relay-framework', name:'接力', emoji:'⚡', description:'分析涨停板和连板梯队，筛选下次开盘可接力的个股', trigger:'指令: 接力' },
+    { id:'news-catalyst', name:'消息', emoji:'📰', description:'解析用户粘贴的消息，拆解利好链条，筛选受益标的', trigger:'指令: 消息 + 粘贴内容' },
+    { id:'news-scanner', name:'资讯', emoji:'🔎', description:'主动搜索收盘后至今的市场消息，评估重要度/值博率', trigger:'指令: 资讯' },
+    { id:'review-framework', name:'复盘', emoji:'📋', description:'按时间线复盘当日大盘/板块异动/连板梯队/板块强度', trigger:'指令: 复盘' },
+    { id:'deduce-framework', name:'推衍', emoji:'🧠', description:'复盘+推演下次开盘路径+每条路径绑定标的+竞价确认', trigger:'指令: 推衍' },
   ];
 
-  if (DATA.strategies?.strategies) {
-    // Use structured data with steps if available
-    h += '<div class="strat-grid">';
-    for (const s of DATA.strategies.strategies) {
-      h += renderStratCard(s);
-    }
-    h += '</div>';
-  } else {
-    // Fallback to built-in
-    h += '<div class="strat-grid">';
-    for (const s of builtinStrats) {
-      h += `<div class="strat-card" onclick="this.classList.toggle('expanded')">
-        <div class="icon">${s.icon}</div>
-        <div class="title">${s.name}</div>
-        <div class="desc">${s.desc}</div>
-        <div class="trigger">${s.trigger}</div>
-        <div class="strat-detail"><p style="color:var(--text-dim)">详细框架见项目 memory/ 目录</p></div>
-      </div>`;
-    }
-    h += '</div>';
+  h += '<div style="display:flex;flex-direction:column;gap:6px;overflow-y:auto">';
+  for (const s of strats) {
+    const active = s.id === selectedStrategy;
+    h += `<div class="strat-card" style="cursor:pointer;padding:12px;${active?'border-color:var(--accent);background:var(--bg-hover)':''}" onclick="selectStrategy('${s.id}')">
+      <span style="font-size:20px;margin-right:8px">${s.emoji||'📌'}</span>
+      <span style="font-weight:bold">${s.name}</span>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:4px">${s.trigger||''}</div>
+    </div>`;
   }
-
   h += '</div>';
+
+  // RIGHT: output panel
+  h += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px">';
+  const sel = strats.find(s => s.id === selectedStrategy);
+  if (sel) {
+    h += `<div style="font-size:18px;font-weight:bold;margin-bottom:4px">${sel.emoji||''} ${sel.name}</div>`;
+    h += `<div style="font-size:13px;color:var(--text-dim);margin-bottom:4px">${sel.description||''}</div>`;
+    h += `<div style="font-size:12px;color:var(--accent);margin-bottom:16px">${sel.trigger||''}</div>`;
+
+    // Show steps from strategies.json
+    if (sel.steps) {
+      h += '<div style="font-size:13px;font-weight:bold;margin-bottom:8px">执行框架</div>';
+      for (const step of sel.steps) {
+        h += `<div class="strat-step"><div class="step-title">${step.number}. ${step.title}</div></div>`;
+      }
+      if (sel.screening_rules?.length) {
+        h += `<div style="margin-top:8px;font-size:12px;color:var(--orange)">规则: ${sel.screening_rules.join(' | ')}</div>`;
+      }
+      h += '<hr style="border-color:var(--border);margin:12px 0">';
+    }
+
+    // Show outputs
+    const outputs = strategyOutputs[selectedStrategy] || [];
+    h += '<div style="font-size:13px;font-weight:bold;margin-bottom:8px">历史输出 (' + outputs.length + '条)</div>';
+    if (outputs.length === 0) {
+      h += '<div style="font-size:12px;color:var(--text-dim)">暂无输出记录。使用该指令后，输出将出现在这里。</div>';
+    } else {
+      for (const o of outputs.slice().reverse()) {
+        h += `<div style="padding:8px;margin-bottom:6px;background:var(--bg-hover);border-radius:6px;font-size:12px">
+          <span style="color:var(--text-dim)">${o.date} ${o.time}</span>
+          <div style="margin-top:2px">${o.summary}</div>
+        </div>`;
+      }
+    }
+  }
+  h += '</div>';
+
+  h += '</div></div>';
   return h;
 }
 
-function renderStratCard(s) {
-  let h = `<div class="strat-card" onclick="this.classList.toggle('expanded')">
-    <div class="icon">${s.emoji||'📌'}</div>
-    <div class="title">${s.name}</div>
-    <div class="desc">${s.description||s.summary||''}</div>
-    <div class="trigger">${s.trigger||''}</div>
-    <div class="strat-detail">`;
-  if (s.steps) {
-    for (const step of s.steps) {
-      h += `<div class="strat-step">
-        <div class="step-title">Step ${step.number}: ${step.title}</div>
-        <div class="step-body">${(step.actions||step.output||[]).join(' | ')}</div>
-      </div>`;
-    }
-    if (s.screening_rules?.length) {
-      h += `<div class="strat-step"><div class="step-title">选股规则</div><div class="step-body">${s.screening_rules.join(' | ')}</div></div>`;
-    }
-  }
-  h += '</div></div>';
-  return h;
+function selectStrategy(id) {
+  selectedStrategy = id;
+  renderTab('strategies');
 }
 
 // ============ LIVE MODE ============
