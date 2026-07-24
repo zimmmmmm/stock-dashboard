@@ -306,14 +306,17 @@ function renderWatchlist() {
   const wl = DATA.market.watchlist;
   let h = '<div class="content">';
 
-  // Summary chips
+  // Summary chips + controls
   const sectorNames = [...new Set(wl.map(s => s.sector))];
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">';
   h += '<div class="chips">';
-  h += `<span class="chip active" onclick="filterWatchlist('all')">全部</span>`;
+  h += `<span class="chip active" onclick="filterWatchlist('all')">全部(${wl.length})</span>`;
   for (const sn of sectorNames) {
     const count = wl.filter(s => s.sector === sn).length;
     h += `<span class="chip" onclick="filterWatchlist('${sn}')">${sn}(${count})</span>`;
   }
+  h += '</div>';
+  h += '<button class="btn btn-sm btn-primary" onclick="showAddStock()">➕ 添加</button>';
   h += '</div>';
 
   // Table
@@ -323,6 +326,7 @@ function renderWatchlist() {
     { key: 'price', label: '现价' }, { key: 'pct', label: '涨幅' },
     { key: 'turnover', label: '换手' }, { key: 'amount', label: '成交(亿)' },
     { key: 'status', label: '状态' },
+    { key: 'act', label: '操作' },
   ];
   for (const col of cols) {
     h += `<th onclick="sortWatchlist('${col.key}')">${col.label}</th>`;
@@ -358,6 +362,7 @@ function renderWatchlistBody(filter) {
       <td>${s.turnover.toFixed(1)}%</td>
       <td>${s.amount.toFixed(1)}</td>
       <td><span class="badge ${badgeCls}">${s.status}</span></td>
+      <td><button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" onclick="deleteStock('${s.code}')">✕</button></td>
     </tr>`;
   }).join('');
 }
@@ -372,6 +377,68 @@ function filterWatchlist(filter) {
   document.querySelectorAll('.chips .chip').forEach(c => c.classList.remove('active'));
   event.target.classList.add('active');
   renderWatchlistBody(filter);
+}
+
+// ============ WATCHLIST EDIT ============
+let watchlistConfig = null;
+
+async function loadWatchlistConfig() {
+  if (!SERVER) return;
+  try {
+    const r = await fetch(SERVER + '/api/watchlist');
+    watchlistConfig = await r.json();
+  } catch(e) {}
+}
+
+function showAddStock() {
+  const code = prompt('输入股票代码（6位）:');
+  if (!code || code.length !== 6) return;
+  const name = prompt('输入股票名称:');
+  if (!name) return;
+  const sector = prompt('输入板块（电力/半导体/算力/医药/其他）:', '其他');
+  if (!watchlistConfig) watchlistConfig = { stocks: {}, sectors: {} };
+  watchlistConfig.stocks[code] = name;
+  watchlistConfig.sectors[code] = sector || '其他';
+  saveWatchlistConfig();
+}
+
+async function deleteStock(code) {
+  const name = watchlistConfig?.stocks?.[code] || code;
+  if (!confirm('删除 ' + name + ' ?')) return;
+  if (!watchlistConfig) return;
+  delete watchlistConfig.stocks[code];
+  delete watchlistConfig.sectors[code];
+  saveWatchlistConfig();
+}
+
+async function saveWatchlistConfig() {
+  if (!SERVER) { toast('请先启动服务', true); return; }
+  try {
+    const r = await fetch(SERVER + '/api/watchlist/save', {
+      method: 'POST', body: JSON.stringify(watchlistConfig),
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await r.json();
+    if (data.ok) {
+      toast('自选已保存 (' + data.count + '只)');
+      await loadAllData();
+      renderTab('watchlist');
+    }
+  } catch(e) { toast('保存失败: ' + e.message, true); }
+}
+
+// Also detect watchlist on init
+async function detectLive() {
+  try {
+    const r = await fetch('http://localhost:8765/api/health', { signal: AbortSignal.timeout(1000) });
+    if (r.ok) {
+      SERVER = 'http://localhost:8765';
+      document.getElementById('liveDot').className = 'live-dot on';
+      document.getElementById('liveLabel').textContent = '实时';
+      await loadWatchlistConfig();
+      setInterval(refreshAll, 30000);
+    }
+  } catch(e) {}
 }
 
 // ============ LIMIT-UPS TAB ============

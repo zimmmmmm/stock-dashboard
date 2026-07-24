@@ -39,6 +39,12 @@ class DashboardServer(http.server.SimpleHTTPRequestHandler):
         if self.path == '/api/status':
             return self.get_status()
 
+        if self.path == '/api/watchlist':
+            return self.get_watchlist()
+
+        if self.path.startswith('/api/watchlist/save'):
+            return self.save_watchlist()
+
         # Serve static files
         return super().do_GET()
 
@@ -95,6 +101,30 @@ class DashboardServer(http.server.SimpleHTTPRequestHandler):
             else:
                 status[f] = {'updated': '--', 'size_kb': 0}
         return self.json_resp(status)
+
+    def do_POST(self):
+        if self.path == '/api/watchlist/save':
+            return self.save_watchlist()
+        self.send_response(404)
+        self.end_headers()
+
+    def get_watchlist(self):
+        wl_path = DATA / 'watchlist.json'
+        if wl_path.exists():
+            with open(wl_path, 'r', encoding='utf-8') as f:
+                return self.json_resp(json.load(f))
+        return self.json_resp({'stocks': {}, 'sectors': {}})
+
+    def save_watchlist(self):
+        try:
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length)
+            data = json.loads(body)
+            with open(DATA / 'watchlist.json', 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            return self.json_resp({'ok': True, 'count': len(data.get('stocks', {}))})
+        except Exception as e:
+            return self.json_resp({'ok': False, 'error': str(e)})
 
     def json_resp(self, data):
         body = json.dumps(data, ensure_ascii=False).encode('utf-8')

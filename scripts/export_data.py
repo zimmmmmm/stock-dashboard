@@ -10,30 +10,15 @@ import subprocess, json, os, sys
 from datetime import datetime
 
 # ============================================================
-# 自选池（与 ultra.py 同步维护）
+# 自选池 — 从 watchlist.json 读取，仪表盘可编辑
 # ============================================================
-WATCHLIST = {
-    '001258': '立新能源',   '600744': '华银电力',   '000767': '晋控电力',
-    '002371': '北方华创',   '603986': '兆易创新',   '600584': '长电科技',
-    '002156': '通富微电',   '603893': '瑞芯微',     '002409': '雅克科技',
-    '000938': '紫光股份',   '002396': '星网锐捷',   '603118': '共进股份',
-    '000063': '中兴通讯',   '002900': '哈三联',     '002793': '罗欣药业',
-    '002197': '证通电子',   '000815': '美利云',     '002432': '九安医疗',
-    '002213': '大为股份',   '603297': '永新光学',   '605111': '新洁能',
-    '600406': '国电南瑞',   '600875': '东方电气',
-}
-
-# 板块分类（用于仪表盘分组）
-SECTOR_MAP = {
-    '001258': '电力', '600744': '电力', '000767': '电力',
-    '600406': '电力', '600875': '电力',
-    '002371': '半导体', '603986': '半导体', '600584': '半导体',
-    '002156': '半导体', '603893': '半导体', '002409': '半导体',
-    '000938': '交换机/AI', '002396': '交换机/AI', '603118': '交换机/AI',
-    '000063': '交换机/AI', '002197': '算力', '000815': '算力',
-    '002900': '医药', '002793': '医药', '002432': '医药',
-    '002213': '半导体', '603297': '光学', '605111': '半导体',
-}
+def load_watchlist():
+    wl_path = os.path.join(DATA_DIR, 'watchlist.json')
+    if os.path.exists(wl_path):
+        with open(wl_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            return data.get('stocks', {}), data.get('sectors', {})
+    return {}, {}
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -194,6 +179,11 @@ def get_status(pct, turnover=0):
 
 def export_market():
     """导出指数+自选池+全市场数据"""
+    WATCHLIST, SECTOR_MAP = load_watchlist()
+    if not WATCHLIST:
+        print("Warning: watchlist.json 为空，请先初始化自选池")
+        return
+
     # 拉指数（腾讯API对指数返回 价格/涨跌点，不是昨收）
     idx_raw = fetch_tencent(['s_sh000001', 's_sz399001', 's_sz399006', 's_sh000688'])
     idx_data = parse_tencent(idx_raw, is_index=True)

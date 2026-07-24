@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-24T11:43:24.355979",
+  "updated": "2026-07-24T11:47:37.669421",
   "indices": [
     {
       "code": "000001",
@@ -355,8 +355,8 @@
     }
   ],
   "market_breadth": {
-    "up": 13,
-    "down": 37,
+    "up": 0,
+    "down": 0,
     "limit_up": 0,
     "limit_down": 0
   },
