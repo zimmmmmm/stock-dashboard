@@ -175,6 +175,7 @@ const TABS = [
   { id: 'limitups', label: '涨停板' },
   { id: 'sectors', label: '板块强度' },
   { id: 'strategies', label: '策略库' },
+  { id: 'claude', label: '💬 Claude' },
 ];
 let currentTab = 'market';
 let watchlistSort = { col: 'pct', asc: false };
@@ -237,11 +238,22 @@ function renderTab(id) {
     case 'market': c.innerHTML = renderMarket(); break;
     case 'watchlist': c.innerHTML = renderWatchlist(); break;
     case 'limitups': c.innerHTML = renderLimitUps(); break;
-    case 'positions': c.innerHTML = renderPositions(); break;
     case 'sectors': c.innerHTML = renderSectors(); break;
-    case 'journal': c.innerHTML = renderJournal(); break;
     case 'strategies': c.innerHTML = renderStrategies(); break;
+    case 'claude': c.innerHTML = renderClaude(); break;
   }
+}
+
+// ============ CLAUDE TAB ============
+function renderClaude() {
+  return `<div class="content" style="height:calc(100vh - 100px);padding:0">
+    <iframe src="https://claude.ai/code" style="width:100%;height:100%;border:none;border-radius:0"
+      allow="clipboard-read;clipboard-write" sandbox="allow-scripts allow-same-origin allow-forms allow-popups">
+    </iframe>
+    <p style="text-align:center;padding:8px;font-size:12px;color:var(--text-dim)">
+      如无法加载，请<a href="https://claude.ai/code" target="_blank">在浏览器中打开 Claude Code</a>
+    </p>
+  </div>`;
 }
 
 // ============ MARKET TAB ============
