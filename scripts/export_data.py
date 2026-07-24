@@ -90,6 +90,50 @@ def fetch_limit_ups():
         return []
 
 
+def fetch_market_breadth():
+    """拉全市场涨跌家数（东财全市场概览）"""
+    url = ("https://push2.eastmoney.com/api/qt/ulist.np/get?"
+           "fltt=2&fields=f2,f3,f12,f104,f105,f106"
+           "&secids=1.000001")
+    try:
+        r = subprocess.run(['curl', '-s', '--connect-timeout', '5', '--max-time', '10', url],
+                         capture_output=True, timeout=12)
+        data = json.loads(r.stdout.decode('utf-8'))
+        info = {'up': 0, 'down': 0, 'limit_up': 0, 'limit_down': 0}
+        if data.get('data') and data['data'].get('diff'):
+            item = data['data']['diff'][0]
+            info['up'] = item.get('f104', 0) or 0
+            info['down'] = item.get('f105', 0) or 0
+            info['limit_up'] = item.get('f106', 0) or 0
+        return info
+    except Exception:
+        return {'up': 0, 'down': 0, 'limit_up': 0, 'limit_down': 0}
+
+
+def fetch_sector_ranking():
+    """拉行业板块涨跌排名"""
+    url = ("https://push2.eastmoney.com/api/qt/clist/get?"
+           "fid=f3&po=1&pz=12&pn=1&np=1&fltt=2&invt=2"
+           "&fields=f2,f3,f12,f14"
+           "&fs=m:90+t:2+f:!50")
+    try:
+        r = subprocess.run(['curl', '-s', '--connect-timeout', '5', '--max-time', '10', url],
+                         capture_output=True, timeout=12)
+        data = json.loads(r.stdout.decode('utf-8'))
+        sectors = []
+        if data.get('data') and data['data'].get('diff'):
+            for item in data['data']['diff']:
+                pct = item.get('f3', 0)
+                sectors.append({
+                    'code': item.get('f12', ''),
+                    'name': item.get('f14', ''),
+                    'pct': pct,
+                })
+        return sectors
+    except Exception:
+        return []
+
+
 def parse_tencent(raw, is_index=False):
     """解析腾讯API响应
     股票: parts[3]=现价, parts[4]=昨收, parts[5]=今开
@@ -149,7 +193,7 @@ def get_status(pct, turnover=0):
 
 
 def export_market():
-    """导出指数+自选池"""
+    """导出指数+自选池+全市场数据"""
     # 拉指数（腾讯API对指数返回 价格/涨跌点，不是昨收）
     idx_raw = fetch_tencent(['s_sh000001', 's_sz399001', 's_sz399006', 's_sh000688'])
     idx_data = parse_tencent(idx_raw, is_index=True)
@@ -205,11 +249,19 @@ def export_market():
             'status': status, 'sector': sector,
         })
 
+    # 拉全市场数据
+    breadth = fetch_market_breadth()
+    sectors = fetch_sector_ranking()
+
     data = {
         'updated': datetime.now().isoformat(),
         'indices': indices,
         'watchlist': watchlist,
-        'summary': {
+        # 全市场数据
+        'market_breadth': breadth,
+        'market_sectors': sectors,
+        # 自选池汇总
+        'watchlist_summary': {
             'total': len(watchlist), 'ups': ups, 'downs': downs,
             'flat': len(watchlist) - ups - downs, 'limit_ups': limit_ups,
             'sectors': sector_stats,

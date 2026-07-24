@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-24T11:40:39.851850",
+  "updated": "2026-07-24T11:43:24.355979",
   "indices": [
     {
       "code": "000001",
@@ -354,7 +354,14 @@
       "sector": "电力"
     }
   ],
-  "summary": {
+  "market_breadth": {
+    "up": 13,
+    "down": 37,
+    "limit_up": 0,
+    "limit_down": 0
+  },
+  "market_sectors": [],
+  "watchlist_summary": {
     "total": 23,
     "ups": 7,
     "downs": 16,

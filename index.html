@@ -256,36 +256,38 @@ function renderMarket() {
   }
   h += '</div>';
 
-  // Summary stats
-  const s = m.summary;
+  // Summary stats - market-wide
+  const mb = m.market_breadth || {};
   h += '<div class="card" style="margin-top:16px"><div class="stat-row">';
-  h += statItem('红盘', s.ups, 'badge-up');
-  h += statItem('绿盘', s.downs, 'badge-down');
-  h += statItem('平盘', s.flat, '');
-  h += statItem('涨停', s.limit_ups, 'badge-zt');
-  h += statItem('总计', s.total, '');
+  h += statItem('上涨', mb.up || 0, 'badge-up');
+  h += statItem('下跌', mb.down || 0, 'badge-down');
+  h += statItem('涨停', mb.limit_up || 0, 'badge-zt');
+  h += '<div class="stat-item"><div class="lbl">全市场</div></div>';
   h += '</div></div>';
 
-  // Breadth bar
-  if (s.ups + s.downs > 0) {
-    const upPct = s.ups/(s.ups+s.downs)*100;
+  // Breadth bar - market-wide
+  if ((mb.up||0) + (mb.down||0) > 0) {
+    const upPct = (mb.up||0)/((mb.up||0)+(mb.down||0))*100;
     h += `<div class="card" style="margin-top:12px">
-      <div style="font-size:13px;margin-bottom:6px">涨跌分布</div>
+      <div style="font-size:13px;margin-bottom:6px">全市场涨跌分布</div>
       <div style="display:flex;height:20px;border-radius:4px;overflow:hidden">
         <div style="width:${upPct}%;background:var(--red)"></div>
         <div style="width:${100-upPct}%;background:var(--green)"></div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);margin-top:4px">
-        <span>涨 ${s.ups}</span><span>跌 ${s.downs}</span>
+        <span>涨 ${mb.up||0}</span><span>跌 ${mb.down||0}</span>
       </div>
     </div>`;
   }
 
-  // Sector summary
-  if (s.sectors) {
-    h += '<div class="section-title">板块概览</div><div class="chips">';
-    for (const [name, st] of Object.entries(s.sectors)) {
-      h += `<span class="chip">${name} ${st.ups}/${st.count}${st.limit_ups>0?' 🔥'+st.limit_ups:''}</span>`;
+  // Market sector ranking
+  const ms = m.market_sectors;
+  if (ms && ms.length > 0) {
+    h += '<div class="section-title">行业板块涨跌</div>';
+    h += '<div class="chips">';
+    for (const s of ms.slice(0, 12)) {
+      const cls = s.pct > 0 ? 'chip' : 'chip';
+      h += `<span class="chip" style="color:${s.pct>0?'var(--red)':'var(--green)'}">${s.name} ${s.pct>0?'+':''}${s.pct.toFixed(1)}%</span>`;
     }
     h += '</div>';
   }
