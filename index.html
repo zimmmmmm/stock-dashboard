@@ -245,135 +245,78 @@ function renderTab(id) {
 }
 
 // ============ CLAUDE TAB ============
+let chatHistory = [];
+
 function renderClaude() {
   const quickPrompts = [
-    { label: '扫盘', icon: '🔍' },
-    { label: '接力', icon: '⚡' },
-    { label: '复盘', icon: '📋' },
-    { label: '推衍', icon: '🧠' },
-    { label: '消息面', icon: '🔎' },
+    { label: '扫盘', icon: '🔍' }, { label: '接力', icon: '⚡' },
+    { label: '复盘', icon: '📋' }, { label: '推衍', icon: '🧠' },
+    { label: '消息', icon: '📰' }, { label: '分析当前盘面', icon: '📊' },
   ];
-
   let h = '<div class="content">';
   h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;min-height:75vh">';
-
-  // LEFT: Chat panel
-  h += '<div style="display:flex;flex-direction:column">';
-  h += '<div style="font-size:14px;font-weight:bold;margin-bottom:8px">💬 对话</div>';
-
-  // API Key + Model + Base URL (session only)
-  h += '<div style="margin-bottom:8px">';
-  h += '<div style="display:flex;gap:6px;margin-bottom:4px">';
+  // LEFT
+  h += '<div style="display:flex;flex-direction:column"><div style="font-size:14px;font-weight:bold;margin-bottom:8px">💬 对话</div>';
+  h += '<div style="margin-bottom:8px"><div style="display:flex;gap:6px;margin-bottom:4px">';
   h += '<input type="password" id="apiKey" placeholder="API Key / Token" style="flex:1;font-size:12px" onchange="saveApiKey()">';
   h += '<select id="apiModel" style="width:130px;font-size:11px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px" onchange="saveApiKey()">';
-  h += '<option value="deepseek-v4-pro[1m]">DeepSeek V4</option>';
-  h += '<option value="deepseek-v4-flash">DeepSeek Flash</option>';
-  h += '<option value="claude-3-5-sonnet-20241022">Claude Sonnet</option>';
-  h += '</select>';
-  h += '</div>';
-  h += '<input id="apiBaseUrl" placeholder="API地址" value="https://api.deepseek.com/anthropic/messages" style="font-size:11px" onchange="saveApiKey()">';
-  h += '</div>';
-
-  // Quick prompts
+  h += '<option value="deepseek-v4-pro[1m]">DeepSeek V4</option><option value="deepseek-v4-flash">DeepSeek Flash</option><option value="claude-3-5-sonnet-20241022">Claude Sonnet</option></select></div>';
+  h += '<input id="apiBaseUrl" placeholder="API地址" value="https://api.deepseek.com/anthropic/messages" style="font-size:11px" onchange="saveApiKey()"></div>';
   h += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">';
-  for (const p of quickPrompts) {
-    h += `<button class="btn btn-sm" style="background:var(--bg);border:1px solid var(--border);color:var(--text-dim)" onclick="setPrompt('${p.label}')">${p.icon} ${p.label}</button>`;
-  }
+  for (const p of quickPrompts) h += '<button class="btn btn-sm" style="background:var(--bg);border:1px solid var(--border);color:var(--text-dim)" onclick="setPrompt(\''+p.label+'\')">'+p.icon+' '+p.label+'</button>';
   h += '</div>';
-
-  // Chat area
-  h += '<div id="chatMsgs" style="flex:1;overflow-y:auto;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;min-height:300px;max-height:55vh;font-size:13px">';
-  h += '<div style="color:var(--text-dim);text-align:center;padding:20px">输入提示词或点击上方指令开始对话</div>';
-  h += '</div>';
-
-  // Input
-  h += '<div style="display:flex;gap:8px">';
+  h += '<div id="chatMsgs" style="flex:1;overflow-y:auto;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;min-height:200px;max-height:45vh;font-size:13px">';
+  if (chatHistory.length===0) h += '<div style="color:var(--text-dim);text-align:center;padding:20px">输入提示词或点击快捷指令</div>';
+  else for (const m of chatHistory) h += '<div style="margin-bottom:8px"><span style="color:'+(m.role==='user'?'var(--accent)':'var(--green)')+'">'+(m.role==='user'?'你':'Claude')+':</span> '+m.text.slice(0,300)+'</div>';
+  h += '</div><div style="display:flex;gap:8px">';
   h += '<input id="chatInput" placeholder="输入指令或问题..." style="flex:1" onkeydown="if(event.key===\'Enter\')sendChat()">';
   h += '<button class="btn btn-primary" onclick="sendChat()" id="chatSend">发送</button>';
-  h += '</div>';
-  h += '</div>';
-
-  // RIGHT: Output panel
-  h += '<div style="display:flex;flex-direction:column">';
-  h += '<div style="font-size:14px;font-weight:bold;margin-bottom:8px">📄 输出</div>';
+  h += '<button class="btn btn-sm" style="background:var(--bg)" onclick="chatHistory=[];renderTab(\'claude\')">清空</button></div></div>';
+  // RIGHT
+  h += '<div style="display:flex;flex-direction:column"><div style="font-size:14px;font-weight:bold;margin-bottom:8px">📄 输出</div>';
   h += '<div id="chatOutput" style="flex:1;overflow-y:auto;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;max-height:70vh;white-space:pre-wrap">';
-  h += '<div style="color:var(--text-dim);text-align:center;padding:20px">发送消息后，回复将显示在这里</div>';
-  h += '</div>';
-  h += '</div>';
-
-  h += '</div></div>';
-
-  // Restore settings
-  setTimeout(() => {
-    const k = sessionStorage.getItem('apiKey');
-    const m = sessionStorage.getItem('apiModel');
-    const b = sessionStorage.getItem('apiBaseUrl');
-    if (k) document.getElementById('apiKey').value = k;
-    if (m) document.getElementById('apiModel').value = m;
-    if (b) document.getElementById('apiBaseUrl').value = b;
-  }, 100);
-
+  const last = chatHistory.filter(m=>m.role==='assistant').pop();
+  h += last ? last.text : '<div style="color:var(--text-dim);text-align:center;padding:20px">发送消息后，回复显示在这里</div>';
+  h += '</div></div></div></div>';
+  setTimeout(()=>{
+    const k=sessionStorage.getItem('apiKey'),m=sessionStorage.getItem('apiModel'),b=sessionStorage.getItem('apiBaseUrl');
+    if(k)document.getElementById('apiKey').value=k;
+    if(m)document.getElementById('apiModel').value=m;
+    if(b)document.getElementById('apiBaseUrl').value=b;
+  },100);
   return h;
 }
 
-function saveApiKey() {
-  sessionStorage.setItem('apiKey', document.getElementById('apiKey').value);
-  sessionStorage.setItem('apiModel', document.getElementById('apiModel').value);
-  sessionStorage.setItem('apiBaseUrl', document.getElementById('apiBaseUrl').value);
+function saveApiKey(){
+  sessionStorage.setItem('apiKey',document.getElementById('apiKey').value);
+  sessionStorage.setItem('apiModel',document.getElementById('apiModel').value);
+  sessionStorage.setItem('apiBaseUrl',document.getElementById('apiBaseUrl').value);
 }
 
-function setPrompt(cmd) {
-  document.getElementById('chatInput').value = cmd;
-  sendChat();
-}
+function setPrompt(cmd){ document.getElementById('chatInput').value=cmd; sendChat(); }
 
-async function sendChat() {
-  const input = document.getElementById('chatInput');
-  const prompt = input.value.trim();
-  if (!prompt) return;
-
-  const key = document.getElementById('apiKey').value.trim() || sessionStorage.getItem('apiKey');
-  if (!key) { toast('请先输入 API Key', true); return; }
-
-  const baseUrl = SERVER || 'http://localhost:8765';
-
-  // Show user message
-  const msgs = document.getElementById('chatMsgs');
-  msgs.innerHTML += `<div style="margin-bottom:8px"><span style="color:var(--accent)">你:</span> ${prompt}</div>`;
-  msgs.scrollTop = msgs.scrollHeight;
-  input.value = '';
-
-  const sendBtn = document.getElementById('chatSend');
-  sendBtn.disabled = true;
-  sendBtn.textContent = '...';
-  document.getElementById('chatOutput').innerHTML = '<div style="color:var(--text-dim)">思考中...</div>';
-
-  try {
-    const r = await fetch(baseUrl + '/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        key, prompt,
-        model: document.getElementById('apiModel')?.value || 'deepseek-v4-pro[1m]',
-        baseUrl: document.getElementById('apiBaseUrl')?.value || 'https://api.deepseek.com/anthropic/messages',
-      }),
-    });
-    const data = await r.json();
-    if (data.ok) {
-      msgs.innerHTML += `<div style="margin-bottom:8px"><span style="color:var(--green)">Claude:</span> ${data.text.slice(0,200)}...</div>`;
-      msgs.scrollTop = msgs.scrollHeight;
-      document.getElementById('chatOutput').innerHTML = data.text;
-    } else {
-      document.getElementById('chatOutput').innerHTML = '<div style="color:var(--red)">错误: ' + (data.error||'未知') + '</div>';
-    }
-  } catch(e) {
-    document.getElementById('chatOutput').innerHTML = '<div style="color:var(--red)">连接失败: ' + e.message + '</div>';
-  }
-  sendBtn.disabled = false;
-  sendBtn.textContent = '发送';
+async function sendChat(){
+  const inp=document.getElementById('chatInput'),prompt=inp.value.trim();
+  if(!prompt)return;
+  const key=document.getElementById('apiKey').value.trim()||sessionStorage.getItem('apiKey');
+  if(!key){alert('请先输入API Key');return;}
+  const baseUrl=SERVER||'http://localhost:8765';
+  chatHistory.push({role:'user',text:prompt});inp.value='';
+  document.getElementById('chatOutput').innerHTML='<div style="color:var(--text-dim)">思考中...</div>';
+  const btn=document.getElementById('chatSend');btn.disabled=true;btn.textContent='...';
+  try{
+    const r=await fetch(baseUrl+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({key,prompt,model:document.getElementById('apiModel')?.value||'deepseek-v4-pro[1m]',
+      baseUrl:document.getElementById('apiBaseUrl')?.value||'https://api.deepseek.com/anthropic/messages'})});
+    const d=await r.json();
+    if(d.ok&&d.text){chatHistory.push({role:'assistant',text:d.text});document.getElementById('chatOutput').innerHTML=d.text;}
+    else document.getElementById('chatOutput').innerHTML='<div style="color:var(--red)">'+(d.error||'无返回内容，请重试')+'</div>';
+  }catch(e){document.getElementById('chatOutput').innerHTML='<div style="color:var(--red)">连接失败: '+e.message+'</div>';}
+  btn.disabled=false;btn.textContent='发送';renderTab('claude');
 }
 
 // ============ MARKET TAB ============
+
 function renderMarket() {
   if (!DATA.market) return '<div class="content"><p>暂无数据，请先运行 export_data.py</p></div>';
   const m = DATA.market;

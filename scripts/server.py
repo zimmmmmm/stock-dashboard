@@ -125,9 +125,25 @@ class DashboardServer(http.server.SimpleHTTPRequestHandler):
             if not api_key or not prompt:
                 return self.json_resp({'ok': False, 'error': '缺少API Key或提示词'})
 
+            # 注入实时行情数据
+            market_context = ''
+            market_path = DATA / 'market.json'
+            if market_path.exists():
+                try:
+                    with open(market_path, 'r', encoding='utf-8') as f:
+                        md = json.load(f)
+                    idx_str = ', '.join([f"{i['name']}{i['price']}({i['pct']:+.2f}%)" for i in md.get('indices', [])])
+                    wl = md.get('watchlist', [])
+                    ups = [s for s in wl if s['pct'] > 0]
+                    zt = [s for s in wl if s['status'] == '涨停']
+                    wl_str = ', '.join([f"{s['name']}({s['code']}){s['price']}{s['pct']:+.1f}%" for s in wl[:5]])
+                    market_context = f"当前行情: 指数=[{idx_str}], 自选红{len(ups)}/{len(wl)}, 涨停{len(zt)}只。自选样本: {wl_str}。"
+                except: pass
+
             system_prompt = (
                 "你是A股超短交易助手。用户是连板接力风格，只做主板(60xxxx/00xxxx)，持股1-2天，不看基本面。"
-                "回答简洁直接，数据说话，给出具体标的和代码。"
+                "回答简洁直接，数据说话，给出具体标的和代码。不要说你没有实时数据——下面的行情数据就是实时的。"
+                + market_context
             )
 
             model = body.get('model', 'claude-3-haiku-20240307')
