@@ -247,44 +247,112 @@ function renderTab(id) {
 // ============ CLAUDE TAB ============
 function renderClaude() {
   const quickPrompts = [
-    { label: '扫盘', icon: '🔍', desc: '扫描当前板块走势，筛选可介入个股' },
-    { label: '接力', icon: '⚡', desc: '分析连板梯队，筛选接力标的' },
-    { label: '复盘', icon: '📋', desc: '按时间线复盘当日盘面' },
-    { label: '推衍', icon: '🧠', desc: '推演下次开盘路径+绑定标的' },
-    { label: '消息面', icon: '🔎', desc: '搜索收盘后至今市场消息' },
+    { label: '扫盘', icon: '🔍' },
+    { label: '接力', icon: '⚡' },
+    { label: '复盘', icon: '📋' },
+    { label: '推衍', icon: '🧠' },
+    { label: '消息面', icon: '🔎' },
   ];
 
   let h = '<div class="content">';
-  h += '<div style="text-align:center;padding:40px 0 20px">';
-  h += '<div style="font-size:48px;margin-bottom:12px">🤖</div>';
-  h += '<div style="font-size:18px;font-weight:bold;margin-bottom:8px">Claude Code 对话</div>';
-  h += '<a href="https://claude.ai/code" target="_blank" class="btn btn-primary" style="display:inline-block;padding:10px 24px;font-size:14px;text-decoration:none">🚀 打开 Claude Code</a>';
-  h += '<p style="font-size:12px;color:var(--text-dim);margin-top:8px">在新标签页打开 claude.ai/code</p>';
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;min-height:75vh">';
+
+  // LEFT: Chat panel
+  h += '<div style="display:flex;flex-direction:column">';
+  h += '<div style="font-size:14px;font-weight:bold;margin-bottom:8px">💬 对话</div>';
+
+  // API Key (session only)
+  h += '<div style="margin-bottom:8px">';
+  h += '<input type="password" id="apiKey" placeholder="输入 Anthropic API Key (本次会话有效)" style="font-size:12px" onchange="saveApiKey()">';
   h += '</div>';
 
   // Quick prompts
-  h += '<div class="section-title">快捷指令</div>';
-  h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
+  h += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">';
   for (const p of quickPrompts) {
-    h += `<div class="card" style="cursor:pointer;text-align:center;padding:16px" onclick="copyAndOpen('${p.label}')">
-      <div style="font-size:24px;margin-bottom:6px">${p.icon}</div>
-      <div style="font-weight:bold;font-size:14px">${p.label}</div>
-      <div style="font-size:11px;color:var(--text-dim);margin-top:4px">${p.desc}</div>
-    </div>`;
+    h += `<button class="btn btn-sm" style="background:var(--bg);border:1px solid var(--border);color:var(--text-dim)" onclick="setPrompt('${p.label}')">${p.icon} ${p.label}</button>`;
   }
   h += '</div>';
 
-  h += '<p style="text-align:center;font-size:11px;color:var(--text-dim);margin-top:16px">点击卡片复制指令→粘贴到 Claude Code 对话框中执行</p>';
+  // Chat area
+  h += '<div id="chatMsgs" style="flex:1;overflow-y:auto;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;min-height:300px;max-height:55vh;font-size:13px">';
+  h += '<div style="color:var(--text-dim);text-align:center;padding:20px">输入提示词或点击上方指令开始对话</div>';
   h += '</div>';
+
+  // Input
+  h += '<div style="display:flex;gap:8px">';
+  h += '<input id="chatInput" placeholder="输入指令或问题..." style="flex:1" onkeydown="if(event.key===\'Enter\')sendChat()">';
+  h += '<button class="btn btn-primary" onclick="sendChat()" id="chatSend">发送</button>';
+  h += '</div>';
+  h += '</div>';
+
+  // RIGHT: Output panel
+  h += '<div style="display:flex;flex-direction:column">';
+  h += '<div style="font-size:14px;font-weight:bold;margin-bottom:8px">📄 输出</div>';
+  h += '<div id="chatOutput" style="flex:1;overflow-y:auto;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;max-height:70vh;white-space:pre-wrap">';
+  h += '<div style="color:var(--text-dim);text-align:center;padding:20px">发送消息后，回复将显示在这里</div>';
+  h += '</div>';
+  h += '</div>';
+
+  h += '</div></div>';
+
+  // Restore API key
+  setTimeout(() => {
+    const saved = sessionStorage.getItem('apiKey');
+    if (saved) document.getElementById('apiKey').value = saved;
+  }, 100);
+
   return h;
 }
 
-let _openWindow = null;
-function copyAndOpen(cmd) {
-  navigator.clipboard.writeText(cmd).then(() => {
-    if (_openWindow && !_openWindow.closed) _openWindow.focus();
-    else _openWindow = window.open('https://claude.ai/code', '_blank');
-  }).catch(() => {});
+function saveApiKey() {
+  sessionStorage.setItem('apiKey', document.getElementById('apiKey').value);
+}
+
+function setPrompt(cmd) {
+  document.getElementById('chatInput').value = cmd;
+  sendChat();
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const prompt = input.value.trim();
+  if (!prompt) return;
+
+  const key = document.getElementById('apiKey').value.trim() || sessionStorage.getItem('apiKey');
+  if (!key) { toast('请先输入 API Key', true); return; }
+
+  const baseUrl = SERVER || 'http://localhost:8765';
+
+  // Show user message
+  const msgs = document.getElementById('chatMsgs');
+  msgs.innerHTML += `<div style="margin-bottom:8px"><span style="color:var(--accent)">你:</span> ${prompt}</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+  input.value = '';
+
+  const sendBtn = document.getElementById('chatSend');
+  sendBtn.disabled = true;
+  sendBtn.textContent = '...';
+  document.getElementById('chatOutput').innerHTML = '<div style="color:var(--text-dim)">思考中...</div>';
+
+  try {
+    const r = await fetch(baseUrl + '/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, prompt }),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      msgs.innerHTML += `<div style="margin-bottom:8px"><span style="color:var(--green)">Claude:</span> ${data.text.slice(0,200)}...</div>`;
+      msgs.scrollTop = msgs.scrollHeight;
+      document.getElementById('chatOutput').innerHTML = data.text;
+    } else {
+      document.getElementById('chatOutput').innerHTML = '<div style="color:var(--red)">错误: ' + (data.error||'未知') + '</div>';
+    }
+  } catch(e) {
+    document.getElementById('chatOutput').innerHTML = '<div style="color:var(--red)">连接失败: ' + e.message + '</div>';
+  }
+  sendBtn.disabled = false;
+  sendBtn.textContent = '发送';
 }
 
 // ============ MARKET TAB ============

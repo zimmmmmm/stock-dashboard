@@ -11,6 +11,7 @@ import os
 import sys
 import threading
 import time
+import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -108,8 +109,54 @@ class DashboardServer(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         if self.path == '/api/watchlist/save':
             return self.save_watchlist()
+        if self.path == '/api/chat':
+            return self.chat()
         self.send_response(404)
         self.end_headers()
+
+    def chat(self):
+        """代理 Anthropic API 请求"""
+        try:
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length))
+            api_key = body.get('key', '')
+            prompt = body.get('prompt', '')
+            if not api_key or not prompt:
+                return self.json_resp({'ok': False, 'error': '缺少API Key或提示词'})
+
+            # 构建系统提示（复用用户交易框架）
+            system_prompt = (
+                "你是A股超短交易助手。用户是连板接力风格，只做主板(60xxxx/00xxxx)，持股1-2天，不看基本面。"
+                "回答简洁直接，数据说话，给出具体标的和代码。"
+            )
+
+            req_body = json.dumps({
+                'model': 'claude-sonnet-5-20251001',
+                'max_tokens': 4096,
+                'system': system_prompt,
+                'messages': [{'role': 'user', 'content': prompt}],
+            }).encode('utf-8')
+
+            api_req = urllib.request.Request(
+                'https://api.anthropic.com/v1/messages',
+                data=req_body,
+                headers={
+                    'Content-Type': 'application/json',
+                    'x-api-key': api_key,
+                    'anthropic-version': '2023-06-01',
+                }
+            )
+
+            with urllib.request.urlopen(api_req, timeout=60) as resp:
+                data = json.loads(resp.read())
+                text = data['content'][0]['text']
+                return self.json_resp({'ok': True, 'text': text})
+
+        except urllib.error.HTTPError as e:
+            err = json.loads(e.read())
+            return self.json_resp({'ok': False, 'error': err.get('error', {}).get('message', str(e))})
+        except Exception as e:
+            return self.json_resp({'ok': False, 'error': str(e)})
 
     def search_stock(self):
         """搜索股票，支持代码或名称"""
@@ -174,7 +221,7 @@ class DashboardServer(http.server.SimpleHTTPRequestHandler):
 
 def main():
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8765
-    server = http.server.HTTPServer(('0.0.0.0', port), DashboardServer)
+    server = http.server.ThreadingHTTPServer(('0.0.0.0', port), DashboardServer)
     print(f'仪表盘服务已启动 -> http://localhost:{port}')
     print('按 Ctrl+C 停止')
     try:
