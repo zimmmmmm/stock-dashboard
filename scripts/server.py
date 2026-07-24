@@ -115,16 +115,16 @@ class DashboardServer(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
 
     def chat(self):
-        """代理 Anthropic API 请求"""
+        """代理API请求 — 支持 Anthropic 和 DeepSeek 接口"""
         try:
             length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(length))
             api_key = body.get('key', '')
             prompt = body.get('prompt', '')
+            base_url = body.get('baseUrl', 'https://api.anthropic.com/v1/messages')
             if not api_key or not prompt:
                 return self.json_resp({'ok': False, 'error': '缺少API Key或提示词'})
 
-            # 构建系统提示（复用用户交易框架）
             system_prompt = (
                 "你是A股超短交易助手。用户是连板接力风格，只做主板(60xxxx/00xxxx)，持股1-2天，不看基本面。"
                 "回答简洁直接，数据说话，给出具体标的和代码。"
@@ -138,24 +138,26 @@ class DashboardServer(http.server.SimpleHTTPRequestHandler):
                 'messages': [{'role': 'user', 'content': prompt}],
             }).encode('utf-8')
 
-            api_req = urllib.request.Request(
-                'https://api.anthropic.com/v1/messages',
-                data=req_body,
-                headers={
-                    'Content-Type': 'application/json',
-                    'x-api-key': api_key,
-                    'anthropic-version': '2023-06-01',
-                }
-            )
+            # DeepSeek 用 Bearer token, Anthropic 用 x-api-key
+            is_deepseek = 'deepseek.com' in base_url
+            headers = {
+                'Content-Type': 'application/json',
+            }
+            if is_deepseek:
+                headers['Authorization'] = 'Bearer ' + api_key
+            else:
+                headers['x-api-key'] = api_key
+                headers['anthropic-version'] = '2023-06-01'
 
+            api_req = urllib.request.Request(base_url, data=req_body, headers=headers)
             with urllib.request.urlopen(api_req, timeout=60) as resp:
                 data = json.loads(resp.read())
                 text = data['content'][0]['text']
                 return self.json_resp({'ok': True, 'text': text})
 
         except urllib.error.HTTPError as e:
-            err = json.loads(e.read())
-            return self.json_resp({'ok': False, 'error': err.get('error', {}).get('message', str(e))})
+            err_body = e.read().decode('utf-8', errors='replace')
+            return self.json_resp({'ok': False, 'error': str(e.code) + ': ' + err_body[:200]})
         except Exception as e:
             return self.json_resp({'ok': False, 'error': str(e)})
 
