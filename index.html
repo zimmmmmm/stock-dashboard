@@ -246,14 +246,45 @@ function renderTab(id) {
 
 // ============ CLAUDE TAB ============
 function renderClaude() {
-  return `<div class="content" style="height:calc(100vh - 100px);padding:0">
-    <iframe src="https://claude.ai/code" style="width:100%;height:100%;border:none;border-radius:0"
-      allow="clipboard-read;clipboard-write" sandbox="allow-scripts allow-same-origin allow-forms allow-popups">
-    </iframe>
-    <p style="text-align:center;padding:8px;font-size:12px;color:var(--text-dim)">
-      如无法加载，请<a href="https://claude.ai/code" target="_blank">在浏览器中打开 Claude Code</a>
-    </p>
-  </div>`;
+  const quickPrompts = [
+    { label: '扫盘', icon: '🔍', desc: '扫描当前板块走势，筛选可介入个股' },
+    { label: '接力', icon: '⚡', desc: '分析连板梯队，筛选接力标的' },
+    { label: '复盘', icon: '📋', desc: '按时间线复盘当日盘面' },
+    { label: '推衍', icon: '🧠', desc: '推演下次开盘路径+绑定标的' },
+    { label: '消息面', icon: '🔎', desc: '搜索收盘后至今市场消息' },
+  ];
+
+  let h = '<div class="content">';
+  h += '<div style="text-align:center;padding:40px 0 20px">';
+  h += '<div style="font-size:48px;margin-bottom:12px">🤖</div>';
+  h += '<div style="font-size:18px;font-weight:bold;margin-bottom:8px">Claude Code 对话</div>';
+  h += '<a href="https://claude.ai/code" target="_blank" class="btn btn-primary" style="display:inline-block;padding:10px 24px;font-size:14px;text-decoration:none">🚀 打开 Claude Code</a>';
+  h += '<p style="font-size:12px;color:var(--text-dim);margin-top:8px">在新标签页打开 claude.ai/code</p>';
+  h += '</div>';
+
+  // Quick prompts
+  h += '<div class="section-title">快捷指令</div>';
+  h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
+  for (const p of quickPrompts) {
+    h += `<div class="card" style="cursor:pointer;text-align:center;padding:16px" onclick="copyAndOpen('${p.label}')">
+      <div style="font-size:24px;margin-bottom:6px">${p.icon}</div>
+      <div style="font-weight:bold;font-size:14px">${p.label}</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:4px">${p.desc}</div>
+    </div>`;
+  }
+  h += '</div>';
+
+  h += '<p style="text-align:center;font-size:11px;color:var(--text-dim);margin-top:16px">点击卡片复制指令→粘贴到 Claude Code 对话框中执行</p>';
+  h += '</div>';
+  return h;
+}
+
+let _openWindow = null;
+function copyAndOpen(cmd) {
+  navigator.clipboard.writeText(cmd).then(() => {
+    if (_openWindow && !_openWindow.closed) _openWindow.focus();
+    else _openWindow = window.open('https://claude.ai/code', '_blank');
+  }).catch(() => {});
 }
 
 // ============ MARKET TAB ============
